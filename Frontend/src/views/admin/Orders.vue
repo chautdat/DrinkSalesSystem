@@ -186,7 +186,7 @@ const paymentMethods = ref([])
 
 // ✅ Lấy thông tin user từ sessionStorage
 const user = JSON.parse(sessionStorage.getItem('user') || '{}')
-const isAdmin = computed(() => user.role === 'Admin')
+const isAdmin = computed(() => (user.role || '').toLowerCase() === 'admin')
 const activeStatus = ref('All')
 
 const filteredOrders = computed(() => {

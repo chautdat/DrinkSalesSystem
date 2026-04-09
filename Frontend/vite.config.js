@@ -1,20 +1,24 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import vue from "@vitejs/plugin-vue";
 
-export default defineConfig({
-  plugins: [vue()],
-  server: {
-    port: 5173,
-    proxy: {
-      "/api": {
-        // Proxy API sang backend HTTP để tránh lỗi cert HTTPS localhost
-        target: "http://localhost:5104",
-        changeOrigin: true,
-      },
-      "/uploads": {
-        target: "http://localhost:5104",
-        changeOrigin: true,
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const backendUrl = env.VITE_BACKEND_URL || "http://localhost:3000";
+
+  return {
+    plugins: [vue()],
+    server: {
+      port: Number(env.VITE_FRONTEND_PORT) || 5173,
+      proxy: {
+        "/api/v1": {
+          target: backendUrl,
+          changeOrigin: true,
+        },
+        "/uploads": {
+          target: backendUrl,
+          changeOrigin: true,
+        },
       },
     },
-  },
+  };
 });

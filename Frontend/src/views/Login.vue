@@ -175,19 +175,22 @@ const regForm = ref({
 
 
 function saveSession(data) {
+  const authUser = data?.user || data || {}
+  const role = (authUser.role || '').toLowerCase()
+
   sessionStorage.setItem('token', data.token)
   sessionStorage.setItem('user',
     JSON.stringify({
-      id:       data.id,
-      email:    data.email,
-      role:     data.role,
-      fullName: data.fullName || '',
-      phone:    data.phone    || '',
-      address:  data.address  || ''
+      id:       authUser._id || authUser.id || '',
+      email:    authUser.email || '',
+      role:     role,
+      fullName: authUser.fullName || '',
+      phone:    authUser.phone || '',
+      address:  authUser.address || ''
     })
   )
 
-  if (data.role === 'Admin') {
+  if (role === 'admin') {
     router.push('/admin')
   } else {
     router.push('/home')

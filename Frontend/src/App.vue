@@ -67,7 +67,7 @@ const user = computed(() => {
   route.path;
   return JSON.parse(sessionStorage.getItem("user") || "{}");
 });
-const isAdmin = computed(() => user.value?.role === "Admin");
+const isAdmin = computed(() => (user.value?.role || "").toLowerCase() === "admin");
 const cartCount = ref(0);
 
 async function loadCartCount() {

@@ -132,7 +132,7 @@ const submitting = ref(false)
 const formError  = ref('')
 
 const user    = JSON.parse(sessionStorage.getItem('user') || '{}')
-const isAdmin = computed(() => user.role === 'Admin')
+const isAdmin = computed(() => (user.role || '').toLowerCase() === 'admin')
 
 const blank = () => ({
   name: '',

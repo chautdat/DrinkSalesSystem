@@ -1,5 +1,7 @@
 import axios from 'axios'
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+
 function attachInterceptors(client) {
   client.interceptors.request.use(config => {
     const token = sessionStorage.getItem('token')
@@ -24,14 +26,16 @@ function attachInterceptors(client) {
 
 const api = attachInterceptors(
   axios.create({
-    baseURL: '/api',
+    baseURL: apiBaseUrl,
+    withCredentials: true,
     headers: { 'Content-Type': 'application/json' }
   })
 )
 
 const formApi = attachInterceptors(
   axios.create({
-    baseURL: '/api'
+    baseURL: apiBaseUrl,
+    withCredentials: true
   })
 )
 

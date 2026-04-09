@@ -57,7 +57,7 @@ const router = createRouter({
 router.beforeEach((to) => {
   const token = sessionStorage.getItem('token')
   const user  = JSON.parse(sessionStorage.getItem('user') || '{}')
-  const isAdmin = user.role === 'Admin'
+  const isAdmin = (user.role || '').toLowerCase() === 'admin'
 
   // Đã đăng nhập mà vào /login → redirect đúng trang chủ theo role
   if (to.path === '/login' && token) {
