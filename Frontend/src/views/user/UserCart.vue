@@ -113,6 +113,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { cartApi, orderApi, paymentMethodApi } from '../../services/api.js'
 import { useRouter } from 'vue-router'
+import { idKey } from '../../utils/display.js'
 
 const emit = defineEmits(['cart-updated'])
 
@@ -166,7 +167,12 @@ async function loadCart() {
 async function loadPaymentMethods() {
   try {
     const { data } = await paymentMethodApi.getAll()
-    paymentMethods.value = (Array.isArray(data) ? data : []).filter(m => m.isActive)
+    paymentMethods.value = (Array.isArray(data) ? data : [])
+      .filter(m => m.isActive)
+      .map(m => ({
+        ...m,
+        id: idKey(m.id || m._id)
+      }))
   } catch (e) {
     paymentMethods.value = []
   }

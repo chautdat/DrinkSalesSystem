@@ -77,7 +77,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { orderApi } from '../../services/api.js'
-import { shortId } from '../../utils/display.js'
+import { shortId, idKey } from '../../utils/display.js'
 
 const orders    = ref([])
 const loading   = ref(true)
@@ -124,6 +124,16 @@ function normalizeOrderStatus(status) {
   return status
 }
 
+function normalizeOrderItem(item) {
+  const product = item?.product && typeof item.product === 'object' ? item.product : null
+  const productId = idKey(item?.productId || product?._id || item?.product || '')
+  return {
+    ...item,
+    productId,
+    productName: item?.title || item?.productName || product?.title || product?.name || 'Sản phẩm'
+  }
+}
+
 const filteredOrders = computed(() =>
   activeTab.value === 'all'
     ? orders.value
@@ -139,7 +149,9 @@ async function load() {
     const { data } = await orderApi.getMine()
     orders.value = (Array.isArray(data) ? data : []).map(o => ({
       ...o,
-      status: normalizeOrderStatus(o.status)
+      id: idKey(o.id || o._id),
+      status: normalizeOrderStatus(o.status),
+      items: Array.isArray(o.items) ? o.items.map(normalizeOrderItem) : []
     }))
   } finally { loading.value = false }
 }
