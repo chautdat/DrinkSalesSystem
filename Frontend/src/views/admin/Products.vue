@@ -20,24 +20,26 @@
         <table>
           <thead>
             <tr>
-              <th style="width:60px">ID</th>
+              <th style="width:60px">STT</th>
               <th>Tên sản phẩm</th>
               <th>Thương hiệu</th>
+              <th>Danh mục</th>
               <th>Giá bán</th>
               <th>Tồn kho</th>
               <th v-if="isAdmin" style="width:160px">Thao tác</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="p in filtered" :key="p.id">
-              <td style="color:#9aa0a6">#{{ p.id }}</td>
-              <td style="font-weight:500">{{ p.name }}</td>
+            <tr v-for="(p, index) in filtered" :key="p.id">
+              <td style="color:#9aa0a6">{{ index + 1 }}</td>
+              <td style="font-weight:500">{{ p.title }}</td>
               <td>{{ p.brandName || '—' }}</td>
+              <td>{{ p.categoryName || '—' }}</td>
               <td style="font-weight:500;color:#1a73e8">{{ fmt(p.price) }}</td>
-              <td :class="{ 'low-stock': p.stockQuantity <= 20 }">
-                {{ p.stockQuantity }}
-                <span v-if="p.stockQuantity <= 20 && p.stockQuantity > 0" class="badge badge-warning" style="margin-left:8px">Sắp hết</span>
-                <span v-if="p.stockQuantity === 0" class="badge badge-danger" style="margin-left:8px">Hết hàng</span>
+              <td :class="{ 'low-stock': p.stock <= 20 }">
+                {{ p.stock }}
+                <span v-if="p.stock <= 20 && p.stock > 0" class="badge badge-warning" style="margin-left:8px">Sắp hết</span>
+                <span v-if="p.stock === 0" class="badge badge-danger" style="margin-left:8px">Hết hàng</span>
               </td>
               <td v-if="isAdmin">
                 <button class="btn btn-secondary btn-sm" style="margin-right:6px" @click="openEdit(p)">Sửa</button>
@@ -56,7 +58,7 @@
         <form @submit.prevent="handleSubmit">
           <div class="form-group">
             <label>Tên sản phẩm *</label>
-            <input class="form-control" v-model="form.name" required />
+            <input class="form-control" v-model="form.title" required />
           </div>
           <div class="grid-2">
             <div class="form-group">
@@ -72,18 +74,18 @@
             <label>Thương hiệu *</label>
             <select class="form-control" v-model="form.brandId" required>
               <option value="">-- Chọn --</option>
-              <option v-for="b in brands" :key="b.id" :value="b.id">
+              <option v-for="b in brands" :key="brandKey(b)" :value="brandValue(b)">
                 {{ b.name }}
               </option>
             </select>
           </div>
           <div class="form-group">
             <label>Danh mục *</label>
-            <select class="form-control" v-model.number="form.categoryId" required>
+            <select class="form-control" v-model="form.categoryId" required>
               <option value="">-- Chọn --</option>
-              <option :value="1">Nước khoáng</option>
-              <option :value="2">Nước tinh khiết</option>
-              <option :value="3">Nước có gas</option>
+              <option v-for="c in categories" :key="categoryKey(c)" :value="categoryValue(c)">
+                {{ c.name }}
+              </option>
             </select>
           </div>
 
@@ -95,6 +97,9 @@
             </small>
             <div v-if="form.imageName" style="margin-top:8px;font-size:12px;color:#1a73e8">
               Đã chọn: <strong>{{ form.imageName }}</strong>
+            </div>
+            <div v-if="form.imagePreviewUrl" class="image-preview">
+              <img :src="form.imagePreviewUrl" alt="Xem trước ảnh sản phẩm" />
             </div>
           </div>
 
@@ -120,10 +125,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { productApi, productImageApi, brandApi } from '../../services/api.js'
+import { productApi, productImageApi, brandApi, categoryApi } from '../../services/api.js'
+import { shortId } from '../../utils/display.js'
 
 const products   = ref([])
 const brands     = ref([])
+const categories = ref([])
 const loading    = ref(true)
 const search     = ref('')
 const showModal  = ref(false)
@@ -134,33 +141,54 @@ const formError  = ref('')
 const user    = JSON.parse(sessionStorage.getItem('user') || '{}')
 const isAdmin = computed(() => (user.role || '').toLowerCase() === 'admin')
 
+function normalizeProduct(p = {}) {
+  const brand = p.brand && typeof p.brand === 'object' ? p.brand : null
+  const category = p.category && typeof p.category === 'object' ? p.category : null
+
+  return {
+    id: p.id || p._id || '',
+    title: p.title || p.name || '',
+    price: Number(p.price || 0),
+    stock: Number(p.stock ?? p.stockQuantity ?? 0),
+    description: p.description || '',
+    brandId: brand?._id || p.brandId || p.brand || '',
+    brandName: brand?.name || p.brandName || '',
+    categoryId: category?._id || p.categoryId || p.category || '',
+    categoryName: category?.name || p.categoryName || '',
+    images: Array.isArray(p.images) ? p.images : []
+  }
+}
+
 const blank = () => ({
-  name: '',
+  title: '',
   price: 0,
   stock: 0,
   brandId: '',
   categoryId: '',
   imageFile: null,
   imageName: '',
+  imagePreviewUrl: '',
   imagePrimary: true
 })
 const form  = ref(blank())
 
 const filtered = computed(() =>
   products.value.filter(p =>
-    p.name.toLowerCase().includes(search.value.toLowerCase())
+    String(p.title || '').toLowerCase().includes(search.value.toLowerCase())
   )
 )
 
 async function load() {
   loading.value = true
   try {
-    const [productsRes, brandsRes] = await Promise.all([
+    const [productsRes, brandsRes, categoriesRes] = await Promise.all([
       productApi.getAll(),
-      brandApi.getAll()
+      brandApi.getAll(),
+      categoryApi.getAll()
     ])
-    products.value = Array.isArray(productsRes.data) ? productsRes.data : []
+    products.value = (Array.isArray(productsRes.data) ? productsRes.data : []).map(normalizeProduct)
     brands.value = Array.isArray(brandsRes.data) ? brandsRes.data : []
+    categories.value = Array.isArray(categoriesRes.data) ? categoriesRes.data : []
   } catch (e) {
     console.error(e)
   } finally { loading.value = false }
@@ -176,13 +204,14 @@ function openCreate() {
 function openEdit(p) {
   editingId.value = p.id
   form.value = {
-    name:       p.name,
+    title:      p.title || '',
     price:      p.price,
-    stock:      p.stockQuantity,  // ✅ map đúng field backend
-    brandId:    p.brandId ?? '',
-    categoryId: p.categoryId,     // ✅ lấy đúng từ product
+    stock:      p.stock,
+    brandId:    p.brandId || '',
+    categoryId: p.categoryId || '',
     imageFile: null,
     imageName: '',
+    imagePreviewUrl: '',
     imagePrimary: true
   }
   formError.value = ''
@@ -193,6 +222,10 @@ function onImageChange(event) {
   const file = event.target.files?.[0] || null
   form.value.imageFile = file
   form.value.imageName = file?.name || ''
+  if (form.value.imagePreviewUrl?.startsWith('blob:')) {
+    URL.revokeObjectURL(form.value.imagePreviewUrl)
+  }
+  form.value.imagePreviewUrl = file ? URL.createObjectURL(file) : ''
 }
 
 async function handleSubmit() {
@@ -203,25 +236,29 @@ async function handleSubmit() {
       formError.value = 'Chọn thương hiệu.'
       return
     }
+    if (!form.value.categoryId) {
+      formError.value = 'Chọn danh mục.'
+      return
+    }
 
     const payload = {
-      name: form.value.name,
+      title: form.value.title.trim(),
       price: form.value.price,
       stock: form.value.stock,
-      brandId: Number(form.value.brandId),
-      categoryId: form.value.categoryId
+      brand: form.value.brandId,
+      category: form.value.categoryId
     }
 
     const saved = editingId.value
       ? await productApi.update(editingId.value, payload)
       : await productApi.create(payload)
 
-    const productId = saved?.data?.id
+    const productId = saved?.data?._id || saved?.data?.id
     if (form.value.imageFile && productId) {
       const imageForm = new FormData()
-      imageForm.append('ProductId', String(productId))
-      imageForm.append('ImageFile', form.value.imageFile)
-      imageForm.append('IsPrimary', String(form.value.imagePrimary))
+      imageForm.append('product', String(productId))
+      imageForm.append('file', form.value.imageFile)
+      imageForm.append('isPrimary', String(form.value.imagePrimary))
       await productImageApi.upload(imageForm)
     }
 
@@ -246,10 +283,29 @@ async function handleDelete(id) {
 const fmt = v =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v)
 
+const brandKey = b => b.id || b._id || b.name
+const brandValue = b => b.id || b._id || b.name
+const categoryKey = c => c.id || c._id || c.name
+const categoryValue = c => c.id || c._id || c.name
+
 onMounted(load)
 </script>
 
 <style scoped>
 .low-stock { color: #e67e22; font-weight: 600; }
 .badge-warning { background: #f1c40f; color: #000; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+.image-preview {
+  margin-top: 10px;
+  border: 1px dashed #dadce0;
+  border-radius: 10px;
+  padding: 8px;
+  background: #f8f9fa;
+}
+.image-preview img {
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  display: block;
+  border-radius: 8px;
+}
 </style>

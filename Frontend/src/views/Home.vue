@@ -155,17 +155,17 @@
           <table>
             <thead>
               <tr>
-                <th style="width:60px">ID</th>
-                <th>User ID</th>
+                <th style="width:60px">STT</th>
+                <th>Người dùng</th>
                 <th>Tổng tiền</th>
                 <th>Trạng thái</th>
                 <th>Ngày tạo</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="o in recentOrders" :key="o.id">
-                <td style="color:#9aa0a6">#{{ o.id }}</td>
-                <td>User #{{ o.userId }}</td>
+              <tr v-for="(o, index) in recentOrders" :key="o.id">
+                <td style="color:#9aa0a6">{{ index + 1 }}</td>
+                <td>User {{ shortId(o.userId) }}</td>
                 <td style="font-weight:600;color:#1a73e8">{{ fmt(o.total) }}</td>
                 <td>
                   <span :class="`badge ${badgeOf(o.status)}`">
@@ -197,6 +197,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { productApi, orderApi, reportApi } from '../services/api.js'
+import { shortId } from '../utils/display.js'
 
 const user    = computed(() => JSON.parse(sessionStorage.getItem('user') || '{}'))
 const isAdmin = computed(() => (user.value?.role || '').toLowerCase() === 'admin')
@@ -207,11 +208,21 @@ const stats = ref({ products: 0, orders: 0, pending: 0, revenue: 0 })
 
 const LABELS = {
   Pending: 'Chờ xác nhận', Confirmed: 'Đã xác nhận',
-  Shipped: 'Đang giao',    Delivered: 'Đã giao', Cancelled: 'Đã hủy'
+  Preparing: 'Đang chuẩn bị',
+  Shipping: 'Đang giao',
+  Completed: 'Đã giao',
+  Shipped: 'Đang giao',
+  Delivered: 'Đã giao',
+  Cancelled: 'Đã hủy'
 }
 const BADGES = {
   Pending: 'badge-warning', Confirmed: 'badge-info',
-  Shipped: 'badge-ok',      Delivered: 'badge-ok', Cancelled: 'badge-danger'
+  Preparing: 'badge-info',
+  Shipping: 'badge-ok',
+  Completed: 'badge-ok',
+  Shipped: 'badge-ok',
+  Delivered: 'badge-ok',
+  Cancelled: 'badge-danger'
 }
 const labelOf = s => LABELS[s] ?? s
 const badgeOf = s => BADGES[s] ?? 'badge-info'
@@ -222,11 +233,11 @@ async function loadStats() {
     const { data: products } = await productApi.getAll()
     stats.value.products = Array.isArray(products) ? products.length : 0
 
-    // Load đơn hàng — backend tự lọc theo role
-    const { data: orders } = await orderApi.getAll()
+    // Load đơn hàng — user dùng đơn của mình, admin xem toàn bộ
+    const { data: orders } = await (isAdmin.value ? orderApi.getAll() : orderApi.getMine())
     const list = Array.isArray(orders) ? orders : []
     stats.value.orders  = list.length
-    stats.value.pending = list.filter(o => o.status === 'Pending').length
+    stats.value.pending = list.filter(o => ['Pending', 'Confirmed', 'Preparing', 'Shipping'].includes(o.status)).length
 
     // 5 đơn gần nhất
     recentOrders.value = list.slice(-5).reverse()

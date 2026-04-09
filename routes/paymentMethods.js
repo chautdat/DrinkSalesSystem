@@ -1,7 +1,19 @@
 var express = require('express');
 var router = express.Router();
+var slugify = require('slugify');
 let paymentMethodModel = require('../schemas/paymentMethods');
 const { checkLogin, checkRole } = require('../utils/authHandler');
+
+function buildCode(name) {
+  return slugify(String(name || ''), {
+    replacement: '-',
+    lower: false,
+    strict: true,
+    trim: true
+  })
+    .replace(/^-+|-+$/g, '')
+    .toUpperCase();
+}
 
 router.get('/', async function (req, res, next) {
   let data = await paymentMethodModel.find({
@@ -34,9 +46,14 @@ router.get('/:id', async function (req, res, next) {
 
 router.post('/', checkLogin, checkRole('admin', 'staff'), async function (req, res, next) {
   try {
+    let code = String(req.body.code || '').trim();
+    if (!code) {
+      code = buildCode(req.body.name);
+    }
+
     let newPaymentMethod = new paymentMethodModel({
       name: req.body.name,
-      code: req.body.code,
+      code: code,
       description: req.body.description,
       isActive: req.body.isActive !== undefined ? req.body.isActive : true
     });

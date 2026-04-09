@@ -18,7 +18,7 @@
         <table>
           <thead>
             <tr>
-              <th style="width:60px">ID</th>
+              <th style="width:60px">STT</th>
               <th>Tên thương hiệu</th>
               <th>Mô tả</th>
               <th>Trạng thái</th>
@@ -27,8 +27,8 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in filtered" :key="item.id">
-              <td style="color:#9aa0a6">#{{ item.id }}</td>
+            <tr v-for="(item, index) in filtered" :key="item.id">
+              <td style="color:#9aa0a6">{{ index + 1 }}</td>
               <td style="font-weight:500">{{ item.name }}</td>
               <td>{{ item.description || '—' }}</td>
               <td>
@@ -88,6 +88,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { brandApi } from '../../services/api.js'
+import { shortId } from '../../utils/display.js'
 
 const items = ref([])
 const loading = ref(true)

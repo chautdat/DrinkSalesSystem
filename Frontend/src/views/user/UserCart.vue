@@ -43,7 +43,7 @@
                 <td>{{ fmt(item.price) }}</td>
                 <td style="font-weight:600;color:#1a73e8">{{ fmt(item.subtotal) }}</td>
                 <td>
-                  <button class="btn btn-danger btn-sm" @click="removeItem(item.id)">✕</button>
+                  <button class="btn btn-danger btn-sm" @click="removeItem(item)">✕</button>
                 </td>
               </tr>
             </tbody>
@@ -114,6 +114,8 @@ import { ref, computed, onMounted } from 'vue'
 import { cartApi, orderApi, paymentMethodApi } from '../../services/api.js'
 import { useRouter } from 'vue-router'
 
+const emit = defineEmits(['cart-updated'])
+
 const router = useRouter()
 const items   = ref([])
 const paymentMethods = ref([])
@@ -134,8 +136,30 @@ const shipping = ref({
 const subtotal = computed(() => items.value.reduce((s, i) => s + i.subtotal, 0))
 const grandTotal = computed(() => subtotal.value)
 
+function normalizeCartItems(cart) {
+  const list = Array.isArray(cart?.products) ? cart.products : []
+  return list
+    .map(item => {
+      const product = item.product && typeof item.product === 'object' ? item.product : null
+      const quantity = Number(item.quantity || 0)
+      const price = Number(product?.price || 0)
+      return {
+        id: product?._id || item.product || '',
+        productId: product?._id || item.product || '',
+        productName: product?.title || product?.name || 'Sản phẩm',
+        price: price,
+        quantity: quantity,
+        subtotal: price * quantity
+      }
+    })
+    .filter(item => item.id)
+}
+
 async function loadCart() {
-  try { const { data } = await cartApi.get(); items.value = Array.isArray(data) ? data : [] }
+  try {
+    const { data } = await cartApi.get()
+    items.value = normalizeCartItems(data)
+  }
   finally { loading.value = false }
 }
 
@@ -152,21 +176,24 @@ async function updateQty(item, delta) {
   const newQty = item.quantity + delta
   if (newQty < 1) return
   try {
-    await cartApi.update(item.id, { quantity: newQty })
+    await cartApi.update(item.productId, { quantity: newQty })
     await loadCart()
+    emit('cart-updated')
   } catch (e) { alert(e.response?.data?.message || 'Lỗi.') }
 }
 
-async function removeItem(id) {
+async function removeItem(item) {
   if (!confirm('Xóa sản phẩm này khỏi giỏ?')) return
-  await cartApi.remove(id)
+  await cartApi.remove(item.productId, item.quantity)
   await loadCart()
+  emit('cart-updated')
 }
 
 async function clearCart() {
   if (!confirm('Xóa toàn bộ giỏ hàng?')) return
   await cartApi.clear()
   await loadCart()
+  emit('cart-updated')
 }
 
 async function checkout() {
@@ -178,17 +205,18 @@ async function checkout() {
   checkoutError.value = ''
   submitting.value    = true
   try {
-    await orderApi.create({
+    await orderApi.checkout({
       userId:          user.id,
       shippingName:    shipping.value.name,
       shippingPhone:   shipping.value.phone,
       shippingAddress: shipping.value.address,
-      paymentMethodId: Number(shipping.value.paymentMethodId),
+      paymentMethodId: shipping.value.paymentMethodId,
       note:            shipping.value.note,
       total:           grandTotal.value,
       items: items.value.map(i => ({ productId: i.productId, quantity: i.quantity }))
     })
     await cartApi.clear()
+    emit('cart-updated')
     router.push('/orders')
   } catch (e) {
     checkoutError.value = e.response?.data?.message || 'Đặt hàng thất bại.'

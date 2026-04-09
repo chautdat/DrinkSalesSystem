@@ -5,6 +5,19 @@ let productModel = require('../schemas/products');
 let { uploadImage } = require('../utils/uploadHandler');
 const { checkLogin, checkRole } = require('../utils/authHandler');
 
+function syncProductImages(product, imageUrl, isPrimary) {
+  let images = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
+  images = images.filter(function (item) {
+    return item !== imageUrl;
+  });
+  if (isPrimary) {
+    images.unshift(imageUrl);
+  } else {
+    images.push(imageUrl);
+  }
+  product.images = images;
+}
+
 router.get('/', async function (req, res, next) {
   let query = {
     isDeleted: false
@@ -65,8 +78,8 @@ router.post('/', checkLogin, checkRole('admin', 'staff'), async function (req, r
     });
     await newImage.save();
 
-    if (newImage.imageUrl && !product.images.includes(newImage.imageUrl)) {
-      product.images.push(newImage.imageUrl);
+    if (newImage.imageUrl) {
+      syncProductImages(product, newImage.imageUrl, newImage.isPrimary);
       await product.save();
     }
 
@@ -104,8 +117,8 @@ router.post('/upload', checkLogin, checkRole('admin', 'staff'), uploadImage.sing
     });
     await newImage.save();
 
-    if (!product.images.includes(imageUrl)) {
-      product.images.push(imageUrl);
+    if (imageUrl) {
+      syncProductImages(product, imageUrl, newImage.isPrimary);
       await product.save();
     }
 

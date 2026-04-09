@@ -41,7 +41,8 @@ const formApi = attachInterceptors(
 
 export const authApi = {
   login:    data => api.post('/auth/login', data),
-  register: data => api.post('/auth/register', data)
+  register: data => api.post('/auth/register', data),
+  logout:   ()   => api.post('/auth/logout')
 }
 
 export const productApi = {
@@ -60,12 +61,28 @@ export const paymentMethodApi = {
   delete:      id         => api.delete(`/payment-methods/${id}`)
 }
 
+export const promotionApi = {
+  getAll:      ()         => api.get('/promotions'),
+  getById:     id         => api.get(`/promotions/${id}`),
+  create:      data       => api.post('/promotions', data),
+  update:      (id, data) => api.put(`/promotions/${id}`, data),
+  delete:      id         => api.delete(`/promotions/${id}`)
+}
+
 export const brandApi = {
   getAll:      ()         => api.get('/brands'),
   getById:     id         => api.get(`/brands/${id}`),
   create:      data       => api.post('/brands', data),
   update:      (id, data) => api.put(`/brands/${id}`, data),
   delete:      id         => api.delete(`/brands/${id}`)
+}
+
+export const categoryApi = {
+  getAll:      ()         => api.get('/categories'),
+  getById:     id         => api.get(`/categories/${id}`),
+  create:      data       => api.post('/categories', data),
+  update:      (id, data) => api.put(`/categories/${id}`, data),
+  delete:      id         => api.delete(`/categories/${id}`)
 }
 
 export const productImageApi = {
@@ -78,17 +95,19 @@ export const productImageApi = {
 }
 
 export const cartApi = {
-  get:    ()         => api.get('/cart'),
-  add:    data       => api.post('/cart', data),
-  update: (id, data) => api.put(`/cart/${id}`, data),
-  remove: id         => api.delete(`/cart/${id}`),
-  clear:  ()         => api.delete('/cart/clear')
+  get:    ()               => api.get('/carts'),
+  add:    data             => api.post('/carts/add', data),
+  update: (product, data)  => api.put('/carts/update', { product, quantity: data?.quantity }),
+  remove: (product, quantity) => api.post('/carts/remove', { product, quantity }),
+  clear:  ()               => api.delete('/carts/clear')
 }
 
 export const orderApi = {
   getAll:       ()           => api.get('/orders'),
+  getMine:      ()           => api.get('/orders/mine'),
   getById:      id           => api.get(`/orders/${id}`),
   create:       data         => api.post('/orders', data),
+  checkout:     data         => api.post('/orders/checkout', data),
   updateStatus: (id, status) => api.put(`/orders/${id}/status`, { status }),
   cancel:       id           => api.put(`/orders/${id}/cancel`)
 }
@@ -101,9 +120,15 @@ export const userApi = {
 }
 
 export const adminApi = {
-  getAll: ()   => api.get('/users/admins'),  // ✅ Đổi từ /admins → /users/admins
-  create: data => api.post('/admins', data),
-  delete: id   => api.delete(`/admins/${id}`)
+  getAll: () =>
+    api.get('/users').then(res => ({
+      ...res,
+      data: Array.isArray(res.data)
+        ? res.data.filter(user => String(user.role || '').toLowerCase() === 'admin')
+        : []
+    })),
+  create: data => api.post('/users', { ...data, role: 'admin' }),
+  delete: id   => api.delete(`/users/${id}`)
 }
 
 export const reportApi = {

@@ -1,12 +1,12 @@
 <template>
   <div class="container">
-    <div class="page-header">
-      <h1>Đơn hàng</h1>
-      <button class="btn btn-primary" @click="openCreate">+ Tạo đơn hàng</button>
-    </div>
+  <div class="page-header">
+    <h1>Đơn hàng</h1>
+    <button class="btn btn-primary" @click="openCreate">+ Tạo đơn hàng</button>
+  </div>
   <div class="status-filter" style="margin:16px 0;display:flex;gap:8px;flex-wrap:wrap">
     <button 
-      v-for="status in ['All', 'Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled']"
+      v-for="status in ['All', 'Pending', 'Confirmed', 'Preparing', 'Shipping', 'Completed', 'Cancelled']"
       :key="status"
       class="btn btn-sm"
       :class="{ 'btn-primary': activeStatus === status, 'btn-secondary': activeStatus !== status }"
@@ -22,8 +22,8 @@
         <table>
           <thead>
             <tr>
-              <th style="width:60px">ID</th>
-              <th>User ID</th>
+              <th style="width:60px">STT</th>
+              <th>Người dùng</th>
               <th>Tổng tiền</th>
               <th>Trạng thái</th>
               <th>Ngày tạo</th>
@@ -31,9 +31,9 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="o in filteredOrders" :key="o.id">
-              <td style="color:#9aa0a6">#{{ o.id }}</td>
-              <td>User #{{ o.userId }}</td>
+            <tr v-for="(o, index) in filteredOrders" :key="o.id">
+              <td style="color:#9aa0a6">{{ index + 1 }}</td>
+              <td>User {{ shortId(o.userId) }}</td>
               <td style="font-weight:600;color:#1a73e8">{{ fmt(o.total) }}</td>
               <td>
                 <span :class="`badge ${badgeOf(o.status)}`">
@@ -75,14 +75,14 @@
 
         <!-- Admin nhập userId tay, User tự động dùng id của mình -->
         <div v-if="isAdmin" class="form-group">
-          <label>User ID *</label>
-          <input class="form-control" v-model.number="cForm.userId"
-            type="number" min="1" placeholder="Nhập ID người dùng" />
+          <label>Mã người dùng *</label>
+          <input class="form-control" v-model="cForm.userId"
+            type="text" placeholder="Nhập mã người dùng" />
         </div>
         <div v-else class="form-group">
           <label>Tạo đơn cho</label>
           <input class="form-control"
-            :value="`User #${cForm.userId} (tài khoản của bạn)`"
+            :value="`User ${shortId(cForm.userId)} (tài khoản của bạn)`"
             disabled style="background:#f5f7fa;color:#9aa0a6" />
         </div>
 
@@ -115,16 +115,16 @@
     <!-- Modal chi tiết -->
     <div v-if="detail" class="modal-overlay" @click.self="detail = null">
       <div class="modal">
-        <div class="modal-title">Chi tiết đơn hàng #{{ detail.id }}</div>
+        <div class="modal-title">Chi tiết đơn hàng {{ shortId(detail.id) }}</div>
         <table style="width:100%;font-size:14px;margin-bottom:16px">
           <tbody>
             <tr>
-              <td style="color:#9aa0a6;padding:7px 0;width:120px">ID</td>
-              <td><strong>#{{ detail.id }}</strong></td>
+              <td style="color:#9aa0a6;padding:7px 0;width:120px">Mã đơn</td>
+              <td><strong>{{ shortId(detail.id) }}</strong></td>
             </tr>
             <tr>
-              <td style="color:#9aa0a6;padding:7px 0">User ID</td>
-              <td>{{ detail.userId }}</td>
+              <td style="color:#9aa0a6;padding:7px 0">Người dùng</td>
+              <td>{{ shortId(detail.userId) }}</td>
             </tr>
             <tr>
               <td style="color:#9aa0a6;padding:7px 0">Tổng tiền</td>
@@ -175,6 +175,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { orderApi, paymentMethodApi } from '../../services/api.js'
+import { idKey, shortId } from '../../utils/display.js'
 
 const orders     = ref([])
 const loading    = ref(true)
@@ -189,13 +190,19 @@ const user = JSON.parse(sessionStorage.getItem('user') || '{}')
 const isAdmin = computed(() => (user.role || '').toLowerCase() === 'admin')
 const activeStatus = ref('All')
 
+function normalizeOrderStatus(status) {
+  if (status === 'Shipped') return 'Shipping'
+  if (status === 'Delivered') return 'Completed'
+  return status
+}
+
 const filteredOrders = computed(() => {
   if (activeStatus.value === 'All') return orders.value
   return orders.value.filter(o => o.status === activeStatus.value)
 })
 // ✅ userId tự động từ token — User không cần nhập tay
 const cForm = ref({
-  userId: user.id ?? '',
+  userId: idKey(user.id || user._id),
   total: 0,
   paymentMethodId: ''
 })
@@ -203,15 +210,17 @@ const cForm = ref({
 const LABELS = {
   Pending:   'Chờ xác nhận',
   Confirmed: 'Đã xác nhận',
-  Shipped:   'Đang giao',
-  Delivered: 'Đã giao',
+  Preparing: 'Đang chuẩn bị',
+  Shipping:  'Đang giao',
+  Completed: 'Đã giao',
   Cancelled: 'Đã hủy'
 }
 const BADGES = {
   Pending:   'badge-warning',
   Confirmed: 'badge-info',
-  Shipped:   'badge-ok',
-  Delivered: 'badge-ok',
+  Preparing: 'badge-info',
+  Shipping:  'badge-ok',
+  Completed: 'badge-ok',
   Cancelled: 'badge-danger'
 }
 const NEXTS = {
@@ -219,8 +228,15 @@ const NEXTS = {
     { val: 'Confirmed', label: 'Xác nhận',  color: 'primary' },
     { val: 'Cancelled', label: 'Hủy đơn',   color: 'danger'  }
   ],
-  Confirmed: [{ val: 'Shipped',   label: 'Giao hàng', color: 'success' }],
-  Shipped:   [{ val: 'Delivered', label: 'Đã giao',   color: 'success' }]
+  Confirmed: [
+    { val: 'Preparing', label: 'Chuẩn bị', color: 'warning' },
+    { val: 'Cancelled',  label: 'Hủy đơn',  color: 'danger'  }
+  ],
+  Preparing: [
+    { val: 'Shipping', label: 'Giao hàng', color: 'success' },
+    { val: 'Cancelled', label: 'Hủy đơn',   color: 'danger'  }
+  ],
+  Shipping:   [{ val: 'Completed', label: 'Hoàn tất', color: 'success' }]
 }
 
 const labelOf = s => LABELS[s] ?? s
@@ -231,7 +247,14 @@ async function load() {
   loading.value = true
   try {
     const { data } = await orderApi.getAll()
-    orders.value = Array.isArray(data) ? data : []
+    orders.value = (Array.isArray(data) ? data : []).map(o => ({
+      ...o,
+      id: idKey(o.id || o._id),
+      userId: idKey(o.userId || o.user?._id || o.user),
+      paymentMethodId: idKey(o.paymentMethodId?._id || o.paymentMethodId),
+      paymentMethodName: o.paymentMethodName || o.paymentMethodId?.name || o.paymentMethod?.name || '',
+      status: normalizeOrderStatus(o.status)
+    }))
   } catch (e) {
     console.error(e)
   } finally { loading.value = false }
@@ -240,7 +263,9 @@ async function load() {
 async function loadLookups() {
   try {
     const { data } = await paymentMethodApi.getAll()
-    paymentMethods.value = (Array.isArray(data) ? data : []).filter(m => m.isActive)
+    paymentMethods.value = (Array.isArray(data) ? data : [])
+      .filter(m => m.isActive)
+      .map(m => ({ ...m, id: idKey(m.id || m._id) }))
   } catch (e) {
     paymentMethods.value = []
   }
@@ -248,7 +273,7 @@ async function loadLookups() {
 
 function openCreate() {
   cForm.value  = {
-    userId: user.id ?? '',
+    userId: idKey(user.id || user._id),
     total: 0,
     paymentMethodId: ''
   }
@@ -258,7 +283,7 @@ function openCreate() {
 
 async function submitOrder() {
   if (!cForm.value.userId) {
-    cError.value = 'Không xác định được User ID.'
+    cError.value = 'Không xác định được mã người dùng.'
     return
   }
   if (!cForm.value.paymentMethodId) {
@@ -269,9 +294,9 @@ async function submitOrder() {
   submitting.value = true
   try {
     await orderApi.create({
-      userId: Number(cForm.value.userId),
+      userId: cForm.value.userId,
       total:  Number(cForm.value.total),
-      paymentMethodId: Number(cForm.value.paymentMethodId)
+      paymentMethodId: cForm.value.paymentMethodId
     })
     showCreate.value = false
     await load()

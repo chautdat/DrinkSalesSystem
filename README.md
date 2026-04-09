@@ -5,6 +5,7 @@
 Hệ thống được thiết kế để:
 - Quản lý thông tin người dùng
 - Quản lý sản phẩm, danh mục, thương hiệu và phương thức thanh toán
+- Quản lý khuyến mãi / mã giảm giá
 - Quản lý giỏ hàng, đơn hàng và upload hình ảnh
 - Hỗ trợ nhắn tin realtime giữa người dùng
 
@@ -130,6 +131,16 @@ npm run seed
 npm start
 ```
 
+`npm run seed` sẽ tạo dữ liệu mẫu cho:
+- roles
+- categories
+- brands
+- payment methods
+- products
+- product images
+- promotions
+- admin account nếu bạn khai báo `ADMIN_EMAIL` và `ADMIN_PASSWORD`
+
 ### Frontend
 ```bash
 cd Frontend
@@ -154,6 +165,7 @@ Mặc định:
 - `/api/v1/products`
 - `/api/v1/product-images`
 - `/api/v1/payment-methods`
+- `/api/v1/promotions`
 - `/api/v1/reports`
 - `/api/v1/carts`
 - `/api/v1/messages`

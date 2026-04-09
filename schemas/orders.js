@@ -39,6 +39,18 @@ let orderSchema = mongoose.Schema(
       ref: 'user',
       required: true
     },
+    shippingName: {
+      type: String,
+      default: ''
+    },
+    shippingPhone: {
+      type: String,
+      default: ''
+    },
+    shippingAddress: {
+      type: String,
+      default: ''
+    },
     items: {
       type: [itemOrderSchema],
       default: []

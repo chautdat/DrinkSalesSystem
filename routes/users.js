@@ -5,6 +5,42 @@ let userModel = require('../schemas/users');
 let userController = require('../controllers/users');
 const { checkLogin, checkRole } = require('../utils/authHandler');
 
+router.get('/profile', checkLogin, async function (req, res, next) {
+  try {
+    let user = await userModel.findOne({
+      _id: req.user._id,
+      isDeleted: false
+    });
+    if (!user) {
+      return res.status(404).send({ message: 'id not found' });
+    }
+    res.send(user);
+  } catch (error) {
+    res.status(404).send({ message: 'id not found' });
+  }
+});
+
+router.put('/profile', checkLogin, async function (req, res, next) {
+  try {
+    let allowedBody = {};
+    if (req.body.fullName !== undefined) allowedBody.fullName = req.body.fullName;
+    if (req.body.phone !== undefined) allowedBody.phone = req.body.phone;
+    if (req.body.address !== undefined) allowedBody.address = req.body.address;
+    if (req.body.avatarUrl !== undefined) allowedBody.avatarUrl = req.body.avatarUrl;
+    let updatedItem = await userModel.findByIdAndUpdate(
+      req.user._id,
+      allowedBody,
+      { new: true }
+    );
+    if (!updatedItem) {
+      return res.status(404).send({ message: 'id not found' });
+    }
+    res.send(updatedItem);
+  } catch (err) {
+    res.status(400).send({ message: err.message });
+  }
+});
+
 router.get('/', checkLogin, checkRole('admin', 'staff'), async function (req, res, next) {
   let users = await userModel.find({ isDeleted: false });
   res.send(users);
@@ -31,6 +67,8 @@ router.post('/', checkLogin, checkRole('admin'), CreateUserValidator, validatedR
       req.body.email,
       req.body.role || 'customer',
       req.body.avatarUrl,
+      req.body.phone,
+      req.body.address,
       req.body.status !== undefined ? req.body.status : true,
       req.body.loginCount || 0
     );

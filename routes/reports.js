@@ -3,6 +3,15 @@ var router = express.Router();
 let orderModel = require('../schemas/orders');
 const { checkLogin, checkRole } = require('../utils/authHandler');
 
+function normalizeOrderStatus(status) {
+  let value = String(status || '').trim();
+  let map = {
+    Shipped: 'Shipping',
+    Delivered: 'Completed'
+  };
+  return map[value] || value;
+}
+
 router.get('/revenue', checkLogin, checkRole('admin'), async function (req, res, next) {
   let orders = await orderModel.find({
     isDeleted: false,
@@ -11,19 +20,40 @@ router.get('/revenue', checkLogin, checkRole('admin'), async function (req, res,
     }
   }).select('total status paymentStatus');
 
-  let totalRevenue = orders.reduce(function (sum, order) {
+  let normalizedOrders = orders.map(function (order) {
+    return {
+      total: Number(order.total || 0),
+      status: normalizeOrderStatus(order.status)
+    };
+  });
+
+  let revenueOrders = normalizedOrders.filter(function (order) {
+    return ['Shipping', 'Completed'].includes(order.status);
+  });
+
+  let totalRevenue = revenueOrders.reduce(function (sum, order) {
     return sum + Number(order.total || 0);
   }, 0);
 
+  let shippedOrders = normalizedOrders.filter(function (order) {
+    return order.status === 'Shipping';
+  }).length;
+
+  let deliveredOrders = normalizedOrders.filter(function (order) {
+    return order.status === 'Completed';
+  }).length;
+
+  let pendingOrders = normalizedOrders.filter(function (order) {
+    return ['Pending', 'Confirmed', 'Preparing'].includes(order.status);
+  }).length;
+
   res.send({
     totalRevenue: totalRevenue,
-    totalOrders: orders.length,
-    completedOrders: orders.filter(function (order) {
-      return order.status === 'Completed';
-    }).length,
-    pendingOrders: orders.filter(function (order) {
-      return order.status === 'Pending';
-    }).length
+    totalOrders: revenueOrders.length,
+    completedOrders: deliveredOrders,
+    deliveredOrders: deliveredOrders,
+    shippedOrders: shippedOrders,
+    pendingOrders: pendingOrders
   });
 });
 

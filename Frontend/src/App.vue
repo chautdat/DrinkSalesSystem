@@ -18,6 +18,9 @@
         <router-link to="/admin/brands" class="nav-link"
           >Thương hiệu</router-link
         >
+        <router-link to="/admin/promotions" class="nav-link"
+          >Khuyến mãi</router-link
+        >
       </div>
       <div class="nav-right">
         <span class="user-email">{{ user?.email }}</span>
@@ -54,7 +57,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { cartApi } from "./services/api.js";
+import { authApi, cartApi } from "./services/api.js";
 
 const router = useRouter();
 const route = useRoute();
@@ -74,9 +77,12 @@ async function loadCartCount() {
   if (!isLoggedIn.value || isAdmin.value) return;
   try {
     const { data } = await cartApi.get();
-    cartCount.value = Array.isArray(data)
-      ? data.reduce((s, i) => s + i.quantity, 0)
-      : 0;
+    const items = Array.isArray(data?.products)
+      ? data.products
+      : Array.isArray(data)
+        ? data
+        : [];
+    cartCount.value = items.reduce((s, i) => s + Number(i.quantity || 0), 0);
   } catch {
     cartCount.value = 0;
   }
@@ -90,10 +96,16 @@ watch(
   { immediate: true },
 );
 
-function logout() {
-  sessionStorage.removeItem("token");
-  sessionStorage.removeItem("user");
-  router.push("/login");
+async function logout() {
+  try {
+    await authApi.logout()
+  } catch {
+    // Ignore logout failures and clear client state anyway.
+  } finally {
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    router.push("/login");
+  }
 }
 </script>
 

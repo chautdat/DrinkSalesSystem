@@ -10,7 +10,7 @@
         <table>
           <thead>
             <tr>
-              <th>ID</th>
+              <th>STT</th>
               <th>Họ tên</th>
               <th>Email</th>
               <th>SĐT</th>
@@ -21,8 +21,8 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="u in users" :key="u.id">
-              <td>#{{ u.id }}</td>
+            <tr v-for="(u, index) in users" :key="u.id">
+              <td>{{ index + 1 }}</td>
               <td>{{ u.fullName || '—' }}</td>
               <td>{{ u.email }}</td>
               <td>{{ u.phone || '—' }}</td>
@@ -49,6 +49,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { userApi } from '../../services/api.js'
+import { shortId } from '../../utils/display.js'
 
 const users = ref([])
 const loading = ref(true)

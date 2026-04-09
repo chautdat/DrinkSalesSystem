@@ -81,7 +81,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { reportApi, productApi, orderApi, adminApi, userApi } from '../../services/api.js'
+import { reportApi, productApi, orderApi, adminApi, userApi, promotionApi } from '../../services/api.js'
 
 const loading = ref(false)
 const stats = ref({
@@ -138,16 +138,17 @@ async function loadDashboard() {
   }
 
   try {
-    const [productsRes, ordersRes, revenueRes] = await Promise.all([
+    const [productsRes, ordersRes, revenueRes, promotionsRes] = await Promise.all([
       productApi.getAll(),
       orderApi.getAll(),
-      reportApi.getRevenue()
+      reportApi.getRevenue(),
+      promotionApi.getAll()
     ])
 
     // Sản phẩm
     const products = Array.isArray(productsRes.data) ? productsRes.data : []
     stats.value.products = products.length
-    lowStockProducts.value = products.filter(p => p.stockQuantity <= 20 && p.stockQuantity > 0)
+    lowStockProducts.value = products.filter(p => Number(p.stock ?? 0) <= 20 && Number(p.stock ?? 0) > 0)
 
     // Đơn hàng
     const allOrders = Array.isArray(ordersRes.data) ? ordersRes.data : []
@@ -159,7 +160,7 @@ async function loadDashboard() {
 
     // Đơn hôm nay
     const todayStr = new Date().toLocaleDateString('en-CA')
-    const validStatuses = ['Shipped', 'Delivered']
+    const validStatuses = ['Shipping', 'Completed', 'Shipped', 'Delivered']
     const todayOrders = allOrders.filter(o => {
       const d = new Date(o.createdAt).toLocaleDateString('en-CA')
       return d === todayStr && validStatuses.includes(o.status)
@@ -182,6 +183,15 @@ async function loadDashboard() {
     } catch (e) { 
       console.warn('Không tải được Admin:', e) 
     }
+
+    const promotions = Array.isArray(promotionsRes.data) ? promotionsRes.data : []
+    const now = Date.now()
+    stats.value.activePromotions = promotions.filter(p => {
+      const expireTime = p.expireDate ? new Date(p.expireDate).getTime() : null
+      const maxUsage = Number(p.maxUsage || 0)
+      const usageCount = Number(p.usageCount || 0)
+      return p.isActive !== false && (!expireTime || expireTime >= now) && (maxUsage <= 0 || usageCount < maxUsage)
+    }).length
 
   } catch (e) {
     console.error('Lỗi load dashboard:', e)

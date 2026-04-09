@@ -12,7 +12,7 @@
         <div class="sidebar-name">{{ form.fullName || user?.email }}</div>
         <div class="sidebar-email">{{ user?.email }}</div>
         <div class="sidebar-role">
-          <span class="badge badge-info">Nhân viên</span>
+          <span class="badge badge-info">{{ roleLabel }}</span>
         </div>
         <div class="sidebar-menu">
           <button :class="['sm-btn', { active: tab === 'info' }]" @click="tab = 'info'">
@@ -94,6 +94,13 @@ const saveMsg = ref('')
 const saveOk  = ref(false)
 
 const form = ref({ fullName: '', phone: '', address: '' })
+
+const roleLabel = computed(() => {
+  const role = String(user.value?.role || '').toLowerCase()
+  if (role === 'admin') return 'Quản trị'
+  if (role === 'staff') return 'Nhân viên'
+  return 'Khách hàng'
+})
 
 const initials = computed(() => {
   const name = form.value.fullName || user.value?.email || ''

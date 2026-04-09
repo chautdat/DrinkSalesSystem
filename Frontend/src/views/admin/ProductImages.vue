@@ -21,7 +21,7 @@
         <table>
           <thead>
             <tr>
-              <th style="width:60px">ID</th>
+              <th style="width:60px">STT</th>
               <th>Sản phẩm</th>
               <th>Ảnh</th>
               <th>Chính</th>
@@ -29,12 +29,11 @@
               <th style="width:160px">Thao tác</th>
             </tr>
           </thead>
-          <tbody>
-            <tr v-for="img in filtered" :key="img.id">
-              <td style="color:#9aa0a6">#{{ img.id }}</td>
+    <tbody>
+            <tr v-for="(img, index) in filtered" :key="img.id">
+              <td style="color:#9aa0a6">{{ index + 1 }}</td>
               <td>
-                <div style="font-weight:500">{{ productName(img.productId) }}</div>
-                <div style="font-size:12px;color:#9aa0a6">Product #{{ img.productId }}</div>
+                <div style="font-weight:500">{{ productName(img.productId, img.productTitle) }}</div>
               </td>
               <td>
                 <img
@@ -75,10 +74,10 @@
         <form @submit.prevent="handleSubmit">
           <div class="form-group">
             <label>Sản phẩm *</label>
-            <select class="form-control" v-model.number="form.productId" required>
-              <option :value="null">-- Chọn sản phẩm --</option>
+            <select class="form-control" v-model="form.productId" required>
+              <option value="">-- Chọn sản phẩm --</option>
               <option v-for="p in products" :key="p.id" :value="p.id">
-                {{ p.name }} (#{{ p.id }})
+                {{ p.title || p.name || 'Sản phẩm' }}
               </option>
             </select>
           </div>
@@ -120,6 +119,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { productApi, productImageApi } from '../../services/api.js'
+import { idKey } from '../../utils/display.js'
 
 const products = ref([])
 const images = ref([])
@@ -130,9 +130,10 @@ const editingId = ref(null)
 const submitting = ref(false)
 const formError = ref('')
 const modalMode = ref('upload')
+const backendOrigin = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '')
 
 const blank = () => ({
-  productId: null,
+  productId: '',
   imageUrl: '',
   imageFile: null,
   isPrimary: false
@@ -142,23 +143,45 @@ const form = ref(blank())
 
 const productMap = computed(() => {
   const map = new Map()
-  products.value.forEach(p => map.set(Number(p.id), p))
+  products.value.forEach(p => map.set(idKey(p.id || p._id), p))
   return map
 })
 
+const normalizeImage = (item = {}) => {
+  const product = item.product && typeof item.product === 'object' ? item.product : null
+  return {
+    id: item.id || item._id || '',
+    productId: product?._id || item.productId || item.product || '',
+    productTitle: product?.title || product?.name || item.productTitle || '',
+    imageUrl: item.imageUrl || '',
+    isPrimary: !!item.isPrimary
+  }
+}
+
 const filtered = computed(() =>
   images.value.filter(item =>
-    `${productName(item.productId)} ${item.imageUrl || ''}`.toLowerCase().includes(search.value.toLowerCase())
+    `${productName(item.productId, item.productTitle)} ${item.imageUrl || ''}`
+      .toLowerCase()
+      .includes(search.value.toLowerCase())
   )
 )
 
-function productName(id) {
-  return productMap.value.get(Number(id))?.name || `Product #${id}`
+function productName(id, fallbackTitle = '') {
+  return productMap.value.get(idKey(id))?.title
+    || productMap.value.get(idKey(id))?.name
+    || fallbackTitle
+    || 'Sản phẩm'
 }
 
 function resolveImageUrl(url) {
   if (!url) return ''
-  return url.startsWith('http') ? url : url
+  const value = String(url).trim()
+  if (!value) return ''
+  if (/^https?:\/\//i.test(value)) return value
+  if (backendOrigin) {
+    return `${backendOrigin}${value.startsWith('/') ? value : `/${value}`}`
+  }
+  return value.startsWith('/') ? value : `/${value}`
 }
 
 async function load() {
@@ -169,7 +192,7 @@ async function load() {
       productImageApi.getAll()
     ])
     products.value = Array.isArray(productsRes.data) ? productsRes.data : []
-    images.value = Array.isArray(imagesRes.data) ? imagesRes.data : []
+    images.value = Array.isArray(imagesRes.data) ? imagesRes.data.map(normalizeImage) : []
   } catch (e) {
     console.error(e)
   } finally {
@@ -200,7 +223,7 @@ function openEdit(item) {
   editingId.value = item.id
   modalMode.value = 'url'
   form.value = {
-    productId: item.productId,
+    productId: item.productId || '',
     imageUrl: item.imageUrl || '',
     imageFile: null,
     isPrimary: !!item.isPrimary
@@ -231,14 +254,14 @@ async function handleSubmit() {
       }
 
       const payload = new FormData()
-      payload.append('ProductId', String(form.value.productId))
-      payload.append('ImageFile', form.value.imageFile)
-      payload.append('IsPrimary', String(form.value.isPrimary))
+      payload.append('product', String(form.value.productId))
+      payload.append('file', form.value.imageFile)
+      payload.append('isPrimary', String(form.value.isPrimary))
 
       await productImageApi.upload(payload)
     } else {
       const payload = {
-        productId: Number(form.value.productId),
+        productId: String(form.value.productId),
         imageUrl: form.value.imageUrl.trim(),
         isPrimary: form.value.isPrimary
       }

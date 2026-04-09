@@ -77,8 +77,8 @@
 
           <!-- Product info -->
           <div class="top-info">
-            <div class="top-name">{{ p.productName || `Product #${p.productId}` }}</div>
-            <div class="top-id">ID: #{{ p.productId }}</div>
+            <div class="top-name">{{ p.productName || `Product ${shortId(p.productId)}` }}</div>
+            <div class="top-id">ID: {{ shortId(p.productId) }}</div>
           </div>
 
           <!-- Stats -->
@@ -104,6 +104,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { reportApi } from '../services/api.js'
+import { shortId } from '../utils/display.js'
 
 const loading     = ref(false)
 const revenue     = ref({

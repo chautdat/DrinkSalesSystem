@@ -11,7 +11,7 @@
         <table>
           <thead>
             <tr>
-              <th>ID</th>
+              <th>STT</th>
               <th>Email</th>
               <th>Họ tên</th>
               <th>Quyền hạn</th>
@@ -20,8 +20,8 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="a in admins" :key="a.id">
-              <td>#{{ a.id }}</td>
+            <tr v-for="(a, index) in admins" :key="a.id">
+              <td>{{ index + 1 }}</td>
               <td>{{ a.email }}</td>
               <td>{{ a.fullName || '—' }}</td>
               <td>{{ a.role || 'Admin' }}</td>
@@ -67,6 +67,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { adminApi } from '../../services/api.js' // giả sử có api riêng cho admin
+import { idKey } from '../../utils/display.js'
 
 const admins = ref([])
 const loading = ref(true)
@@ -77,7 +78,10 @@ async function loadAdmins() {
   loading.value = true
   try {
     const { data } = await adminApi.getAll()
-    admins.value = data
+    admins.value = (Array.isArray(data) ? data : []).map(admin => ({
+      ...admin,
+      id: idKey(admin.id || admin._id)
+    }))
   } catch (e) {
     console.error(e)
   } finally {
@@ -96,7 +100,7 @@ async function handleSubmit() {
     showModal.value = false
     await loadAdmins()
   } catch (e) {
-    alert('Thêm Admin thất bại')
+    alert(e.response?.data?.message || 'Thêm Admin thất bại')
   }
 }
 
@@ -106,7 +110,7 @@ async function handleDelete(id) {
     await adminApi.delete(id)
     await loadAdmins()
   } catch (e) {
-    alert('Xóa thất bại')
+    alert(e.response?.data?.message || 'Xóa thất bại')
   }
 }
 

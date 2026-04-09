@@ -12,7 +12,7 @@ router.post('/register', RegisterValidator, validatedResult, async function (req
   let session = await mongoose.startSession();
   session.startTransaction();
   try {
-    let { fullName, password, email, avatarUrl } = req.body;
+    let { fullName, password, email, avatarUrl, phone, address } = req.body;
     let existedUser = await userController.FindUserByEmail(email);
     if (existedUser) {
       await session.abortTransaction();
@@ -28,6 +28,8 @@ router.post('/register', RegisterValidator, validatedResult, async function (req
       email,
       'customer',
       avatarUrl,
+      phone,
+      address,
       true,
       0,
       session

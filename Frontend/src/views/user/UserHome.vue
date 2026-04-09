@@ -71,13 +71,13 @@
           <table>
             <thead>
               <tr>
-                <th>Mã đơn</th><th>Ngày đặt</th>
+                <th>STT</th><th>Ngày đặt</th>
                 <th>Tổng tiền</th><th>Trạng thái</th><th></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="o in recentOrders" :key="o.id">
-                <td><strong>#{{ o.id }}</strong></td>
+              <tr v-for="(o, index) in recentOrders" :key="o.id">
+                <td><strong>{{ index + 1 }}</strong></td>
                 <td style="color:#9aa0a6">{{ fmtDate(o.createdAt) }}</td>
                 <td style="color:#1a73e8;font-weight:600">{{ fmt(o.total) }}</td>
                 <td>
@@ -110,25 +110,46 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { orderApi, cartApi } from '../../services/api.js'
+import { shortId } from '../../utils/display.js'
 
 const user    = computed(() => JSON.parse(sessionStorage.getItem('user') || '{}'))
 const loading = ref(true)
 const recentOrders = ref([])
 const stats = ref({ total: 0, pending: 0, delivered: 0, cart: 0 })
 
-const LABELS = { Pending:'Chờ xác nhận', Confirmed:'Đã xác nhận', Shipped:'Đang giao', Delivered:'Đã giao', Cancelled:'Đã hủy' }
-const BADGES = { Pending:'badge-warning', Confirmed:'badge-info', Shipped:'badge-ok', Delivered:'badge-ok', Cancelled:'badge-danger' }
+const LABELS = {
+  Pending: 'Chờ xác nhận',
+  Confirmed: 'Đã xác nhận',
+  Preparing: 'Đang chuẩn bị',
+  Shipping: 'Đang giao',
+  Completed: 'Đã giao',
+  Cancelled: 'Đã hủy',
+  Shipped: 'Đang giao',
+  Delivered: 'Đã giao'
+}
+const BADGES = {
+  Pending: 'badge-warning',
+  Confirmed: 'badge-info',
+  Preparing: 'badge-info',
+  Shipping: 'badge-ok',
+  Completed: 'badge-ok',
+  Cancelled: 'badge-danger',
+  Shipped: 'badge-ok',
+  Delivered: 'badge-ok'
+}
 const labelOf = s => LABELS[s] ?? s
 const badgeOf = s => BADGES[s] ?? 'badge-info'
 
 onMounted(async () => {
   try {
-    const [ord, cart] = await Promise.all([orderApi.getAll(), cartApi.get()])
+    const [ord, cart] = await Promise.all([orderApi.getMine(), cartApi.get()])
     const list = Array.isArray(ord.data) ? ord.data : []
     stats.value.total     = list.length
-    stats.value.pending   = list.filter(o => ['Pending','Confirmed','Shipped'].includes(o.status)).length
-    stats.value.delivered = list.filter(o => o.status === 'Delivered').length
-    stats.value.cart      = Array.isArray(cart.data) ? cart.data.reduce((s,i) => s + i.quantity, 0) : 0
+    stats.value.pending   = list.filter(o => ['Pending','Confirmed','Preparing','Shipping'].includes(o.status)).length
+    stats.value.delivered = list.filter(o => ['Completed','Delivered'].includes(o.status)).length
+    stats.value.cart      = Array.isArray(cart.data?.products)
+      ? cart.data.products.reduce((s, i) => s + Number(i.quantity || 0), 0)
+      : 0
     recentOrders.value    = list.slice(0, 5)
   } catch (e) { console.error(e) }
   finally { loading.value = false }

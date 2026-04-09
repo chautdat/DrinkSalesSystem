@@ -18,7 +18,8 @@
         <table>
           <thead>
             <tr>
-              <th style="width:60px">ID</th>
+              <th style="width:60px">STT</th>
+              <th>Mã</th>
               <th>Tên phương thức</th>
               <th>Mô tả</th>
               <th>Trạng thái</th>
@@ -27,8 +28,9 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in filtered" :key="item.id">
-              <td style="color:#9aa0a6">#{{ item.id }}</td>
+            <tr v-for="(item, index) in filtered" :key="item.id">
+              <td style="color:#9aa0a6">{{ index + 1 }}</td>
+              <td style="font-weight:500">{{ item.code || '—' }}</td>
               <td style="font-weight:500">{{ item.name }}</td>
               <td>{{ item.description || '—' }}</td>
               <td>
@@ -43,7 +45,7 @@
               </td>
             </tr>
             <tr v-if="!filtered.length">
-              <td colspan="6" class="loading-text">Chưa có dữ liệu.</td>
+              <td colspan="7" class="loading-text">Chưa có dữ liệu.</td>
             </tr>
           </tbody>
         </table>
@@ -57,6 +59,16 @@
           <div class="form-group">
             <label>Tên phương thức *</label>
             <input class="form-control" v-model="form.name" required />
+          </div>
+
+          <div class="form-group">
+            <label>Mã phương thức</label>
+            <input
+              class="form-control"
+              v-model="form.code"
+              placeholder="VD: VNPAY, COD, BANKING"
+            />
+            <small style="color:#9aa0a6">Bỏ trống để hệ thống tự sinh từ tên.</small>
           </div>
 
           <div class="form-group">
@@ -88,6 +100,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { paymentMethodApi } from '../../services/api.js'
+import { shortId } from '../../utils/display.js'
 
 const items = ref([])
 const loading = ref(true)
@@ -99,6 +112,7 @@ const formError = ref('')
 
 const blank = () => ({
   name: '',
+  code: '',
   description: '',
   isActive: true
 })
@@ -134,6 +148,7 @@ function openEdit(item) {
   editingId.value = item.id
   form.value = {
     name: item.name || '',
+    code: item.code || '',
     description: item.description || '',
     isActive: !!item.isActive
   }
@@ -152,6 +167,7 @@ async function handleSubmit() {
   try {
     const payload = {
       name: form.value.name.trim(),
+      code: form.value.code?.trim() || '',
       description: form.value.description?.trim() || '',
       isActive: form.value.isActive
     }

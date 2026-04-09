@@ -30,10 +30,10 @@
 
       <!-- Orders list -->
       <div class="orders-list">
-        <div v-for="o in filteredOrders" :key="o.id" class="order-card">
+        <div v-for="(o, index) in filteredOrders" :key="o.id" class="order-card">
           <div class="order-header">
             <div>
-              <span class="order-id">#{{ o.id }}</span>
+              <span class="order-id">#{{ index + 1 }}</span>
               <span :class="`badge ${badgeOf(o.status)}`" style="margin-left:8px">
                 {{ labelOf(o.status) }}
               </span>
@@ -77,26 +77,52 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { orderApi } from '../../services/api.js'
+import { shortId } from '../../utils/display.js'
 
 const orders    = ref([])
 const loading   = ref(true)
 const activeTab = ref('all')
 
 const tabs = [
-  { val: 'all',       label: 'Tất cả' },
-  { val: 'Pending',   label: 'Chờ xác nhận' },
-  { val: 'Confirmed', label: 'Đã xác nhận' },
-  { val: 'Shipped',   label: 'Đang giao' },
-  { val: 'Delivered', label: 'Đã giao' },
-  { val: 'Cancelled', label: 'Đã hủy' }
+  { val: 'all',        label: 'Tất cả' },
+  { val: 'Pending',    label: 'Chờ xác nhận' },
+  { val: 'Confirmed',  label: 'Đã xác nhận' },
+  { val: 'Preparing',  label: 'Đang chuẩn bị' },
+  { val: 'Shipping',   label: 'Đang giao' },
+  { val: 'Completed',  label: 'Đã giao' },
+  { val: 'Cancelled',  label: 'Đã hủy' }
 ]
 
-const LABELS = { Pending:'Chờ xác nhận', Confirmed:'Đã xác nhận', Shipped:'Đang giao', Delivered:'Đã giao', Cancelled:'Đã hủy' }
-const BADGES = { Pending:'badge-warning', Confirmed:'badge-info', Shipped:'badge-ok', Delivered:'badge-ok', Cancelled:'badge-danger' }
+const LABELS = {
+  Pending: 'Chờ xác nhận',
+  Confirmed: 'Đã xác nhận',
+  Preparing: 'Đang chuẩn bị',
+  Shipping: 'Đang giao',
+  Completed: 'Đã giao',
+  Cancelled: 'Đã hủy',
+  Shipped: 'Đang giao',
+  Delivered: 'Đã giao'
+}
+const BADGES = {
+  Pending: 'badge-warning',
+  Confirmed: 'badge-info',
+  Preparing: 'badge-info',
+  Shipping: 'badge-ok',
+  Completed: 'badge-ok',
+  Cancelled: 'badge-danger',
+  Shipped: 'badge-ok',
+  Delivered: 'badge-ok'
+}
 
 const labelOf   = s => LABELS[s] ?? s
 const badgeOf   = s => BADGES[s] ?? 'badge-info'
 const canCancel = s => ['Pending', 'Confirmed'].includes(s)
+
+function normalizeOrderStatus(status) {
+  if (status === 'Shipped') return 'Shipping'
+  if (status === 'Delivered') return 'Completed'
+  return status
+}
 
 const filteredOrders = computed(() =>
   activeTab.value === 'all'
@@ -110,8 +136,11 @@ const countByStatus = s =>
 async function load() {
   loading.value = true
   try {
-    const { data } = await orderApi.getAll()
-    orders.value = Array.isArray(data) ? data : []
+    const { data } = await orderApi.getMine()
+    orders.value = (Array.isArray(data) ? data : []).map(o => ({
+      ...o,
+      status: normalizeOrderStatus(o.status)
+    }))
   } finally { loading.value = false }
 }
 

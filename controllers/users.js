@@ -7,6 +7,8 @@ module.exports = {
     email,
     role,
     avatarUrl,
+    phone,
+    address,
     status,
     loginCount,
     session
@@ -16,6 +18,8 @@ module.exports = {
       password: password,
       email: email.toLowerCase(),
       avatarUrl: avatarUrl,
+      phone: phone || '',
+      address: address || '',
       status: status,
       role: role,
       loginCount: loginCount
