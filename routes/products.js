@@ -11,15 +11,25 @@ router.get('/', async function (req, res, next) {
   let titleQ = queries.title ? queries.title.toLowerCase() : '';
   let max = queries.max ? queries.max : 10000;
   let min = queries.min ? queries.min : 0;
-  let data = await productModel.find({
+  let query = {
     isDeleted: false,
     title: new RegExp(titleQ, 'i'),
     price: {
       $gte: min,
       $lte: max
     }
-  }).populate({
+  };
+  if (queries.brand) {
+    query.brand = queries.brand;
+  }
+  if (queries.category) {
+    query.category = queries.category;
+  }
+  let data = await productModel.find(query).populate({
     path: 'category',
+    select: 'name'
+  }).populate({
+    path: 'brand',
     select: 'name'
   });
   res.send(data);
@@ -28,12 +38,18 @@ router.get('/', async function (req, res, next) {
 router.get('/:id', async function (req, res, next) {
   try {
     let id = req.params.id;
-    let result = await productModel.find({
+    let result = await productModel.findOne({
       isDeleted: false,
       _id: id
+    }).populate({
+      path: 'category',
+      select: 'name'
+    }).populate({
+      path: 'brand',
+      select: 'name'
     });
-    if (result.length) {
-      res.send(result[0]);
+    if (result) {
+      res.send(result);
     } else {
       res.status(404).send({
         message: 'ID NOT FOUND'
@@ -60,6 +76,7 @@ router.post('/', checkLogin, checkRole('admin', 'staff'), async function (req, r
     stock: req.body.stock || 0,
     description: req.body.description,
     category: req.body.category,
+    brand: req.body.brand || null,
     images: req.body.images
   });
   await newProduct.save();

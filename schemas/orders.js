@@ -58,6 +58,11 @@ let orderSchema = mongoose.Schema(
       enum: ['COD', 'BANKING', 'WALLET'],
       default: 'COD'
     },
+    paymentMethodId: {
+      type: mongoose.Types.ObjectId,
+      ref: 'paymentMethod',
+      default: null
+    },
     subtotal: {
       type: Number,
       min: 0,

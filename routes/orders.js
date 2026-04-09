@@ -5,6 +5,7 @@ const { checkLogin, checkRole } = require('../utils/authHandler');
 let cartModel = require('../schemas/carts');
 let orderModel = require('../schemas/orders');
 let productModel = require('../schemas/products');
+let paymentMethodModel = require('../schemas/paymentMethods');
 let socket = require('../utils/socket');
 
 router.post('/checkout', checkLogin, async function (req, res, next) {
@@ -14,7 +15,7 @@ router.post('/checkout', checkLogin, async function (req, res, next) {
     let user = req.user;
     let cart = await cartModel.findOne({
       user: user._id
-    }).populate('products.product');
+    }).session(session).populate('products.product');
     if (!cart || !cart.products.length) {
       await session.abortTransaction();
       session.endSession();
@@ -26,6 +27,28 @@ router.post('/checkout', checkLogin, async function (req, res, next) {
 
     let items = [];
     let subtotal = 0;
+    let paymentMethodCode = String(req.body.paymentMethod || 'COD').toUpperCase();
+    let selectedPaymentMethodId = null;
+
+    if (req.body.paymentMethodId) {
+      let selectedPaymentMethod = await paymentMethodModel.findOne({
+        _id: req.body.paymentMethodId,
+        isDeleted: false
+      }).session(session);
+      if (!selectedPaymentMethod) {
+        throw new Error('payment method khong ton tai');
+      }
+      if (selectedPaymentMethod.isActive === false) {
+        throw new Error('payment method dang bi tat');
+      }
+      paymentMethodCode = selectedPaymentMethod.code;
+      selectedPaymentMethodId = selectedPaymentMethod._id;
+    }
+
+    let allowedPaymentMethods = ['COD', 'BANKING', 'WALLET'];
+    if (!allowedPaymentMethods.includes(paymentMethodCode)) {
+      throw new Error('payment method khong hop le');
+    }
 
     for (const item of cart.products) {
       let product = await productModel.findById(item.product._id).session(session);
@@ -56,7 +79,8 @@ router.post('/checkout', checkLogin, async function (req, res, next) {
       subtotal: subtotal,
       total: subtotal,
       note: req.body.note || '',
-      paymentMethod: req.body.paymentMethod || 'COD'
+      paymentMethod: paymentMethodCode,
+      paymentMethodId: selectedPaymentMethodId
     });
     await newOrder.save({ session });
     cart.products = [];
@@ -64,8 +88,12 @@ router.post('/checkout', checkLogin, async function (req, res, next) {
 
     await session.commitTransaction();
     session.endSession();
-    socket.emit('order:created', newOrder);
-    res.send(newOrder);
+    let populatedOrder = await orderModel.findById(newOrder._id)
+      .populate('user')
+      .populate('paymentMethodId')
+      .populate('items.product');
+    socket.emit('order:created', populatedOrder || newOrder);
+    res.send(populatedOrder || newOrder);
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -76,7 +104,11 @@ router.post('/checkout', checkLogin, async function (req, res, next) {
 });
 
 router.get('/', checkLogin, checkRole('admin', 'staff'), async function (req, res, next) {
-  let orders = await orderModel.find({ isDeleted: false }).populate('user').sort({ createdAt: -1 });
+  let orders = await orderModel.find({ isDeleted: false })
+    .populate('user')
+    .populate('paymentMethodId')
+    .populate('items.product')
+    .sort({ createdAt: -1 });
   res.send(orders);
 });
 
@@ -84,7 +116,7 @@ router.get('/mine', checkLogin, async function (req, res, next) {
   let orders = await orderModel.find({
     user: req.user._id,
     isDeleted: false
-  }).sort({ createdAt: -1 });
+  }).populate('paymentMethodId').populate('items.product').sort({ createdAt: -1 });
   res.send(orders);
 });
 
@@ -93,7 +125,7 @@ router.get('/:id', checkLogin, async function (req, res, next) {
     let order = await orderModel.findOne({
       _id: req.params.id,
       isDeleted: false
-    }).populate('user');
+    }).populate('user').populate('paymentMethodId').populate('items.product');
     if (!order) {
       res.status(404).send({
         message: 'id not found'

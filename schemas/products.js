@@ -36,6 +36,11 @@ let productSchema = mongoose.Schema(
       ref: 'category',
       required: true
     },
+    brand: {
+      type: mongoose.Types.ObjectId,
+      ref: 'brand',
+      default: null
+    },
     images: {
       type: [String],
       default: [
