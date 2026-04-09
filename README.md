@@ -1,35 +1,39 @@
 # DrinkSalesSystem BE
 
-Node.js + Express + MongoDB backend for a drink sales system.
+Node.js + Express + MongoDB backend written in the same folder style as the reference repo:
 
-## Setup
+- `app.js`
+- `bin/www`
+- `routes/`
+- `controllers/`
+- `schemas/`
+- `utils/`
+
+## Run
 
 ```bash
 npm install
 cp .env.example .env
-npm run dev
+npm start
 ```
 
-## Features scaffolded
+## Main features
 
-- RESTful API structure
-- JWT authentication and role-based authorization
-- MongoDB models for core business entities
-- Upload handling with Multer
-- Socket.IO bootstrap
-- MongoDB transaction helper
+- RESTful CRUD routes
+- JWT authentication with cookie/Bearer support
+- Role-based authorization
+- Image upload
+- Cart flow and checkout transaction
+- Socket.IO message/order events
 
-## API base
+## API routes
 
-- `/api/health`
-- `/api/auth`
-- `/api/users`
-- `/api/roles`
-- `/api/categories`
-- `/api/products`
-- `/api/vouchers`
-- `/api/uploads`
-- `/api/conversations`
-- `/api/messages`
-- `/api/orders`
-- `/api/reviews`
+- `/api/v1/auth`
+- `/api/v1/users`
+- `/api/v1/roles`
+- `/api/v1/categories`
+- `/api/v1/products`
+- `/api/v1/carts`
+- `/api/v1/messages`
+- `/api/v1/upload`
+- `/api/v1/orders`
