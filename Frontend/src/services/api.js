@@ -61,14 +61,6 @@ export const paymentMethodApi = {
   delete:      id         => api.delete(`/payment-methods/${id}`)
 }
 
-export const promotionApi = {
-  getAll:      ()         => api.get('/promotions'),
-  getById:     id         => api.get(`/promotions/${id}`),
-  create:      data       => api.post('/promotions', data),
-  update:      (id, data) => api.put(`/promotions/${id}`, data),
-  delete:      id         => api.delete(`/promotions/${id}`)
-}
-
 export const brandApi = {
   getAll:      ()         => api.get('/brands'),
   getById:     id         => api.get(`/brands/${id}`),

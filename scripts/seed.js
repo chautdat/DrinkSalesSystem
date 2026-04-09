@@ -7,7 +7,6 @@ let userModel = require('../schemas/users');
 let categoryModel = require('../schemas/categories');
 let brandModel = require('../schemas/brands');
 let paymentMethodModel = require('../schemas/paymentMethods');
-let promotionModel = require('../schemas/promotions');
 let productModel = require('../schemas/products');
 let productImageModel = require('../schemas/productImages');
 
@@ -248,55 +247,6 @@ async function seed() {
     },
     { upsert: true }
   );
-
-  let promotionSeeds = [
-    {
-      code: 'WELCOME10',
-      discount: 10,
-      applyFor: 'Tất cả',
-      expireDate: new Date('2026-12-31T23:59:59.000Z'),
-      usageCount: 0,
-      maxUsage: 0,
-      isActive: true
-    },
-    {
-      code: 'SUMMER15',
-      discount: 15,
-      applyFor: 'Đơn hàng',
-      expireDate: new Date('2026-08-31T23:59:59.000Z'),
-      usageCount: 0,
-      maxUsage: 100,
-      isActive: true
-    },
-    {
-      code: 'FREESHIP',
-      discount: 5,
-      applyFor: 'Giao hàng',
-      expireDate: new Date('2026-12-31T23:59:59.000Z'),
-      usageCount: 0,
-      maxUsage: 200,
-      isActive: true
-    }
-  ];
-
-  for (let promotionSeed of promotionSeeds) {
-    await promotionModel.updateOne(
-      { code: promotionSeed.code },
-      {
-        $setOnInsert: {
-          code: promotionSeed.code,
-          discount: promotionSeed.discount,
-          applyFor: promotionSeed.applyFor,
-          expireDate: promotionSeed.expireDate,
-          usageCount: promotionSeed.usageCount,
-          maxUsage: promotionSeed.maxUsage,
-          isActive: promotionSeed.isActive,
-          isDeleted: false
-        }
-      },
-      { upsert: true }
-    );
-  }
 
   let categories = await categoryModel.find({ isDeleted: false });
   let brands = await brandModel.find({ isDeleted: false });

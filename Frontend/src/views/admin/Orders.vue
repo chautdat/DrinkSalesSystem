@@ -33,7 +33,7 @@
           <tbody>
             <tr v-for="(o, index) in filteredOrders" :key="o.id">
               <td style="color:#9aa0a6">{{ index + 1 }}</td>
-              <td>User {{ shortId(o.userId) }}</td>
+              <td>{{ displayUser(o.user, o.userId) }}</td>
               <td style="font-weight:600;color:#1a73e8">{{ fmt(o.total) }}</td>
               <td>
                 <span :class="`badge ${badgeOf(o.status)}`">
@@ -124,7 +124,7 @@
             </tr>
             <tr>
               <td style="color:#9aa0a6;padding:7px 0">Người dùng</td>
-              <td>{{ shortId(detail.userId) }}</td>
+              <td>{{ displayUser(detail.user, detail.userId) }}</td>
             </tr>
             <tr>
               <td style="color:#9aa0a6;padding:7px 0">Tổng tiền</td>
@@ -243,6 +243,13 @@ const labelOf = s => LABELS[s] ?? s
 const badgeOf = s => BADGES[s] ?? 'badge-info'
 const nextOf  = s => NEXTS[s]  ?? []
 
+function displayUser(user, userId) {
+  if (user && typeof user === 'object') {
+    return user.fullName || user.email || `User ${shortId(userId || user.id || user._id)}`
+  }
+  return `User ${shortId(userId)}`
+}
+
 async function load() {
   loading.value = true
   try {
@@ -251,6 +258,9 @@ async function load() {
       ...o,
       id: idKey(o.id || o._id),
       userId: idKey(o.userId || o.user?._id || o.user),
+      user: o.user && typeof o.user === 'object'
+        ? { ...o.user, id: idKey(o.user.id || o.user._id) }
+        : o.user,
       paymentMethodId: idKey(o.paymentMethodId?._id || o.paymentMethodId),
       paymentMethodName: o.paymentMethodName || o.paymentMethodId?.name || o.paymentMethod?.name || '',
       status: normalizeOrderStatus(o.status)

@@ -10,8 +10,8 @@ router.get('/', checkLogin, checkRole('admin', 'staff'), async function (req, re
 
 router.get('/:id', checkLogin, checkRole('admin', 'staff'), async function (req, res, next) {
   try {
-    let result = await roleModel.find({ _id: req.params.id, isDeleted: false });
-    if (result.length > 0) {
+    let result = await roleModel.findOne({ _id: req.params.id, isDeleted: false });
+    if (result) {
       res.send(result);
     }
     else {
@@ -37,8 +37,17 @@ router.post('/', checkLogin, checkRole('admin'), async function (req, res, next)
 
 router.put('/:id', checkLogin, checkRole('admin'), async function (req, res, next) {
   try {
-    let id = req.params.id;
-    let updatedItem = await roleModel.findByIdAndUpdate(id, req.body, { new: true });
+    let updatedItem = await roleModel.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        isDeleted: false
+      },
+      req.body,
+      {
+        new: true,
+        runValidators: true
+      }
+    );
     if (!updatedItem) {
       return res.status(404).send({ message: 'id not found' });
     }
@@ -50,11 +59,15 @@ router.put('/:id', checkLogin, checkRole('admin'), async function (req, res, nex
 
 router.delete('/:id', checkLogin, checkRole('admin'), async function (req, res, next) {
   try {
-    let id = req.params.id;
-    let updatedItem = await roleModel.findByIdAndUpdate(
-      id,
+    let updatedItem = await roleModel.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        isDeleted: false
+      },
       { isDeleted: true },
-      { new: true }
+      {
+        new: true
+      }
     );
     if (!updatedItem) {
       return res.status(404).send({ message: 'id not found' });

@@ -90,6 +90,16 @@
           </div>
 
           <div class="form-group">
+            <label>Mô tả</label>
+            <textarea
+              class="form-control"
+              v-model="form.description"
+              rows="4"
+              placeholder="Nhập mô tả sản phẩm..."
+            ></textarea>
+          </div>
+
+          <div class="form-group">
             <label>Ảnh sản phẩm</label>
             <input class="form-control" type="file" accept="image/*" @change="onImageChange" />
             <small style="display:block;margin-top:6px;color:#9aa0a6;font-size:12px">
@@ -165,6 +175,7 @@ const blank = () => ({
   stock: 0,
   brandId: '',
   categoryId: '',
+  description: '',
   imageFile: null,
   imageName: '',
   imagePreviewUrl: '',
@@ -187,8 +198,12 @@ async function load() {
       categoryApi.getAll()
     ])
     products.value = (Array.isArray(productsRes.data) ? productsRes.data : []).map(normalizeProduct)
-    brands.value = Array.isArray(brandsRes.data) ? brandsRes.data : []
-    categories.value = Array.isArray(categoriesRes.data) ? categoriesRes.data : []
+    brands.value = Array.isArray(brandsRes.data)
+      ? brandsRes.data.map(b => ({ ...b, id: b.id || b._id }))
+      : []
+    categories.value = Array.isArray(categoriesRes.data)
+      ? categoriesRes.data.map(c => ({ ...c, id: c.id || c._id }))
+      : []
   } catch (e) {
     console.error(e)
   } finally { loading.value = false }
@@ -209,6 +224,7 @@ function openEdit(p) {
     stock:      p.stock,
     brandId:    p.brandId || '',
     categoryId: p.categoryId || '',
+    description:p.description || '',
     imageFile: null,
     imageName: '',
     imagePreviewUrl: '',
@@ -246,7 +262,8 @@ async function handleSubmit() {
       price: form.value.price,
       stock: form.value.stock,
       brand: form.value.brandId,
-      category: form.value.categoryId
+      category: form.value.categoryId,
+      description: form.value.description
     }
 
     const saved = editingId.value
@@ -254,16 +271,24 @@ async function handleSubmit() {
       : await productApi.create(payload)
 
     const productId = saved?.data?._id || saved?.data?.id
+    let uploadError = ''
     if (form.value.imageFile && productId) {
-      const imageForm = new FormData()
-      imageForm.append('product', String(productId))
-      imageForm.append('file', form.value.imageFile)
-      imageForm.append('isPrimary', String(form.value.imagePrimary))
-      await productImageApi.upload(imageForm)
+      try {
+        const imageForm = new FormData()
+        imageForm.append('product', String(productId))
+        imageForm.append('file', form.value.imageFile)
+        imageForm.append('isPrimary', String(form.value.imagePrimary))
+        await productImageApi.upload(imageForm)
+      } catch (imageErr) {
+        uploadError = imageErr.response?.data?.message || 'Upload ảnh thất bại, nhưng sản phẩm đã được lưu.'
+      }
     }
 
     showModal.value = false
     await load()
+    if (uploadError) {
+      alert(uploadError)
+    }
   } catch (e) {
     const d = e.response?.data
     formError.value = d?.message || d?.title || `Lỗi ${e.response?.status}`

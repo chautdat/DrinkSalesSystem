@@ -138,7 +138,6 @@ npm start
 - payment methods
 - products
 - product images
-- promotions
 - admin account nếu bạn khai báo `ADMIN_EMAIL` và `ADMIN_PASSWORD`
 
 ### Frontend
@@ -165,7 +164,6 @@ Mặc định:
 - `/api/v1/products`
 - `/api/v1/product-images`
 - `/api/v1/payment-methods`
-- `/api/v1/promotions`
 - `/api/v1/reports`
 - `/api/v1/carts`
 - `/api/v1/messages`

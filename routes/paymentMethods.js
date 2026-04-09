@@ -46,13 +46,20 @@ router.get('/:id', async function (req, res, next) {
 
 router.post('/', checkLogin, checkRole('admin', 'staff'), async function (req, res, next) {
   try {
+    let name = String(req.body.name || '').trim();
+    if (!name) {
+      return res.status(400).send({
+        message: 'Tên phương thức không được để trống'
+      });
+    }
+
     let code = String(req.body.code || '').trim();
     if (!code) {
-      code = buildCode(req.body.name);
+      code = buildCode(name);
     }
 
     let newPaymentMethod = new paymentMethodModel({
-      name: req.body.name,
+      name: name,
       code: code,
       description: req.body.description,
       isActive: req.body.isActive !== undefined ? req.body.isActive : true
@@ -60,6 +67,11 @@ router.post('/', checkLogin, checkRole('admin', 'staff'), async function (req, r
     await newPaymentMethod.save();
     res.send(newPaymentMethod);
   } catch (error) {
+    if (error && error.code === 11000) {
+      return res.status(400).send({
+        message: 'Tên hoặc mã phương thức đã tồn tại'
+      });
+    }
     res.status(400).send({
       message: error.message
     });
@@ -68,6 +80,24 @@ router.post('/', checkLogin, checkRole('admin', 'staff'), async function (req, r
 
 router.put('/:id', checkLogin, checkRole('admin', 'staff'), async function (req, res, next) {
   try {
+    if (req.body.name !== undefined) {
+      req.body.name = String(req.body.name || '').trim();
+      if (!req.body.name) {
+        return res.status(400).send({
+          message: 'Tên phương thức không được để trống'
+        });
+      }
+    }
+    if (req.body.code !== undefined) {
+      req.body.code = String(req.body.code || '').trim();
+      if (!req.body.code) {
+        if (req.body.name !== undefined && String(req.body.name || '').trim()) {
+          req.body.code = buildCode(req.body.name);
+        } else {
+          delete req.body.code;
+        }
+      }
+    }
     let result = await paymentMethodModel.findOneAndUpdate(
       {
         _id: req.params.id,
@@ -75,7 +105,8 @@ router.put('/:id', checkLogin, checkRole('admin', 'staff'), async function (req,
       },
       req.body,
       {
-        new: true
+        new: true,
+        runValidators: true
       }
     );
     if (!result) {
@@ -85,6 +116,11 @@ router.put('/:id', checkLogin, checkRole('admin', 'staff'), async function (req,
     }
     res.send(result);
   } catch (error) {
+    if (error && error.code === 11000) {
+      return res.status(400).send({
+        message: 'Tên hoặc mã phương thức đã tồn tại'
+      });
+    }
     res.status(400).send({
       message: error.message
     });
@@ -93,13 +129,17 @@ router.put('/:id', checkLogin, checkRole('admin', 'staff'), async function (req,
 
 router.delete('/:id', checkLogin, checkRole('admin'), async function (req, res, next) {
   try {
-    let result = await paymentMethodModel.findOne({
+    let result = await paymentMethodModel.findOneAndUpdate({
       _id: req.params.id,
       isDeleted: false
+    },
+    {
+      isDeleted: true
+    },
+    {
+      new: true
     });
     if (result) {
-      result.isDeleted = true;
-      await result.save();
       res.send(result);
     } else {
       res.status(404).send({

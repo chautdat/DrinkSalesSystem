@@ -17,7 +17,6 @@ import ProductImages   from '../views/admin/ProductImages.vue'
 // ── Bổ sung các route admin mới theo nghiệp vụ ──────────────────────────────
 import Users        from '../views/admin/Users.vue'        // Quản lý khách hàng
 import Admins       from '../views/admin/Admins.vue'       // Quản lý tài khoản Admin
-import Promotions   from '../views/admin/Promotions.vue'   // Khuyến mãi & mã giảm giá
 
 const router = createRouter({
   history: createWebHistory(),
@@ -37,7 +36,6 @@ const router = createRouter({
     { path: '/admin/dashboard',  component: Dashboard,  meta: { requiresAuth: true, adminOnly: true } },
     { path: '/admin/users',      component: Users,      meta: { requiresAuth: true, adminOnly: true } },
     { path: '/admin/admins',     component: Admins,     meta: { requiresAuth: true, adminOnly: true } },
-    { path: '/admin/promotions', component: Promotions, meta: { requiresAuth: true, adminOnly: true } },
     { path: '/admin/payment-methods', component: PaymentMethods, meta: { requiresAuth: true, adminOnly: true } },
     { path: '/admin/brands',          component: Brands,         meta: { requiresAuth: true, adminOnly: true } },
     { path: '/admin/product-images',   component: ProductImages,   meta: { requiresAuth: true, adminOnly: true } },

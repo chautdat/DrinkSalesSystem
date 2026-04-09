@@ -2,7 +2,6 @@ var express = require('express');
 var router = express.Router();
 let { validatedResult, CreateUserValidator, ModifyUserValidator } = require('../utils/validator');
 let userModel = require('../schemas/users');
-let userController = require('../controllers/users');
 const { checkLogin, checkRole } = require('../utils/authHandler');
 
 router.get('/profile', checkLogin, async function (req, res, next) {
@@ -22,15 +21,15 @@ router.get('/profile', checkLogin, async function (req, res, next) {
 
 router.put('/profile', checkLogin, async function (req, res, next) {
   try {
-    let allowedBody = {};
-    if (req.body.fullName !== undefined) allowedBody.fullName = req.body.fullName;
-    if (req.body.phone !== undefined) allowedBody.phone = req.body.phone;
-    if (req.body.address !== undefined) allowedBody.address = req.body.address;
-    if (req.body.avatarUrl !== undefined) allowedBody.avatarUrl = req.body.avatarUrl;
+    let updateBody = {};
+    if (req.body.fullName !== undefined) updateBody.fullName = req.body.fullName;
+    if (req.body.phone !== undefined) updateBody.phone = req.body.phone;
+    if (req.body.address !== undefined) updateBody.address = req.body.address;
+    if (req.body.avatarUrl !== undefined) updateBody.avatarUrl = req.body.avatarUrl;
     let updatedItem = await userModel.findByIdAndUpdate(
       req.user._id,
-      allowedBody,
-      { new: true }
+      updateBody,
+      { new: true, runValidators: true }
     );
     if (!updatedItem) {
       return res.status(404).send({ message: 'id not found' });
@@ -48,8 +47,8 @@ router.get('/', checkLogin, checkRole('admin', 'staff'), async function (req, re
 
 router.get('/:id', checkLogin, checkRole('admin', 'staff'), async function (req, res, next) {
   try {
-    let result = await userModel.find({ _id: req.params.id, isDeleted: false });
-    if (result.length > 0) {
+    let result = await userModel.findOne({ _id: req.params.id, isDeleted: false });
+    if (result) {
       res.send(result);
     } else {
       res.status(404).send({ message: 'id not found' });
@@ -61,17 +60,18 @@ router.get('/:id', checkLogin, checkRole('admin', 'staff'), async function (req,
 
 router.post('/', checkLogin, checkRole('admin'), CreateUserValidator, validatedResult, async function (req, res, next) {
   try {
-    let newUser = await userController.CreateAnUser(
-      req.body.fullName,
-      req.body.password,
-      req.body.email,
-      req.body.role || 'customer',
-      req.body.avatarUrl,
-      req.body.phone,
-      req.body.address,
-      req.body.status !== undefined ? req.body.status : true,
-      req.body.loginCount || 0
-    );
+    let newUser = new userModel({
+      fullName: req.body.fullName,
+      password: req.body.password,
+      email: req.body.email.toLowerCase(),
+      role: req.body.role || 'customer',
+      avatarUrl: req.body.avatarUrl,
+      phone: req.body.phone || '',
+      address: req.body.address || '',
+      status: req.body.status !== undefined ? req.body.status : true,
+      loginCount: req.body.loginCount || 0
+    });
+    await newUser.save();
     res.send(newUser);
   } catch (err) {
     res.status(400).send({ message: err.message });

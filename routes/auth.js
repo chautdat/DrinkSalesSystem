@@ -1,19 +1,22 @@
 let express = require('express');
 let router = express.Router();
-let userController = require('../controllers/users');
 let { RegisterValidator, validatedResult, ChangePasswordValidator } = require('../utils/validator');
 let bcrypt = require('bcryptjs');
 let jwt = require('jsonwebtoken');
 const { checkLogin } = require('../utils/authHandler');
 let mongoose = require('mongoose');
 let cartModel = require('../schemas/carts');
+let userModel = require('../schemas/users');
 
 router.post('/register', RegisterValidator, validatedResult, async function (req, res, next) {
   let session = await mongoose.startSession();
   session.startTransaction();
   try {
     let { fullName, password, email, avatarUrl, phone, address } = req.body;
-    let existedUser = await userController.FindUserByEmail(email);
+    let existedUser = await userModel.findOne({
+      email: email.toLowerCase(),
+      isDeleted: false
+    }).session(session);
     if (existedUser) {
       await session.abortTransaction();
       session.endSession();
@@ -22,18 +25,18 @@ router.post('/register', RegisterValidator, validatedResult, async function (req
       });
       return;
     }
-    let newUser = await userController.CreateAnUser(
-      fullName,
-      password,
-      email,
-      'customer',
-      avatarUrl,
-      phone,
-      address,
-      true,
-      0,
-      session
-    );
+    let newUser = new userModel({
+      fullName: fullName,
+      password: password,
+      email: email.toLowerCase(),
+      avatarUrl: avatarUrl,
+      phone: phone || '',
+      address: address || '',
+      status: true,
+      role: 'customer',
+      loginCount: 0
+    });
+    await newUser.save({ session });
     let newCart = new cartModel({
       user: newUser._id
     });
@@ -75,7 +78,10 @@ router.post('/login', async function (req, res, next) {
     });
     return;
   }
-  let user = await userController.FindUserByEmail(email);
+  let user = await userModel.findOne({
+    email: email.toLowerCase(),
+    isDeleted: false
+  });
   if (!user) {
     res.status(404).send({
       message: 'thong tin dang nhap khong dung'

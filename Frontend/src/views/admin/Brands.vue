@@ -116,7 +116,12 @@ async function load() {
   loading.value = true
   try {
     const { data } = await brandApi.getAll()
-    items.value = Array.isArray(data) ? data : []
+    items.value = Array.isArray(data)
+      ? data.map(item => ({
+          ...item,
+          id: item.id || item._id
+        }))
+      : []
   } catch (e) {
     console.error(e)
   } finally {
@@ -132,7 +137,7 @@ function openCreate() {
 }
 
 function openEdit(item) {
-  editingId.value = item.id
+  editingId.value = item.id || item._id
   form.value = {
     name: item.name || '',
     description: item.description || '',

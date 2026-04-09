@@ -1,41 +1,37 @@
 let jwt = require('jsonwebtoken');
-let userController = require('../controllers/users');
+let userModel = require('../schemas/users');
 
 module.exports = {
   checkLogin: async function (req, res, next) {
     try {
-      let tokens = [];
-      let headerToken = req.headers.authorization;
-      if (headerToken && headerToken.startsWith('Bearer ')) {
-        tokens.push(headerToken.split(' ')[1]);
-      }
-      if (req.cookies.TOKEN_LOGIN) {
-        tokens.push(req.cookies.TOKEN_LOGIN);
+      let headerToken = String(req.headers.authorization || '');
+      let token = '';
+      if (headerToken.startsWith('Bearer ')) {
+        token = headerToken.slice(7);
+      } else if (req.cookies.TOKEN_LOGIN) {
+        token = req.cookies.TOKEN_LOGIN;
       }
 
-      if (!tokens.length) {
-        res.status(404).send('ban chua dang nhap');
+      if (!token) {
+        res.status(401).send('ban chua dang nhap');
         return;
       }
 
-      let user = null;
-      for (let token of tokens) {
-        try {
-          let result = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-          user = await userController.FindUserById(result.id);
-          if (user && !user.isDeleted && user.status !== false) {
-            req.user = user;
-            next();
-            return;
-          }
-        } catch (error) {
-          continue;
-        }
+      let payload = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+      let user = await userModel.findOne({
+        _id: payload.id,
+        isDeleted: false
+      });
+
+      if (!user || user.status === false) {
+        res.status(401).send('ban chua dang nhap');
+        return;
       }
 
-      res.status(404).send('ban chua dang nhap');
+      req.user = user;
+      next();
     } catch (error) {
-      res.status(404).send('ban chua dang nhap');
+      res.status(401).send('ban chua dang nhap');
     }
   },
   checkRole: function (...requiredRole) {

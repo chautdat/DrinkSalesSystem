@@ -25,28 +25,35 @@ function normalizeOrderStatus(status) {
 }
 
 async function resolvePaymentMethod(session, body) {
-  let paymentMethodCode = String(body.paymentMethod || body.paymentMethodCode || 'COD').toUpperCase();
   let selectedPaymentMethodId = null;
+  let paymentMethodCode = 'COD';
 
-  if (body.paymentMethodId) {
-    let selectedPaymentMethod = await paymentMethodModel.findOne({
-      _id: body.paymentMethodId,
+  if (!body.paymentMethodId) {
+    let defaultPaymentMethod = await paymentMethodModel.findOne({
+      code: 'COD',
       isDeleted: false
     }).session(session);
-    if (!selectedPaymentMethod) {
-      throw new Error('payment method khong ton tai');
+    if (defaultPaymentMethod) {
+      selectedPaymentMethodId = defaultPaymentMethod._id;
     }
-    if (selectedPaymentMethod.isActive === false) {
-      throw new Error('payment method dang bi tat');
-    }
-    paymentMethodCode = selectedPaymentMethod.code;
-    selectedPaymentMethodId = selectedPaymentMethod._id;
+    return {
+      paymentMethodCode: paymentMethodCode,
+      selectedPaymentMethodId: selectedPaymentMethodId
+    };
   }
 
-  let allowedPaymentMethods = ['COD', 'BANKING', 'WALLET'];
-  if (!allowedPaymentMethods.includes(paymentMethodCode)) {
-    throw new Error('payment method khong hop le');
+  let selectedPaymentMethod = await paymentMethodModel.findOne({
+    _id: body.paymentMethodId,
+    isDeleted: false
+  }).session(session);
+  if (!selectedPaymentMethod) {
+    throw new Error('payment method khong ton tai');
   }
+  if (selectedPaymentMethod.isActive === false) {
+    throw new Error('payment method dang bi tat');
+  }
+  paymentMethodCode = selectedPaymentMethod.code;
+  selectedPaymentMethodId = selectedPaymentMethod._id;
 
   return {
     paymentMethodCode: paymentMethodCode,
@@ -224,13 +231,20 @@ router.post('/', checkLogin, async function (req, res, next) {
 
 router.get('/', checkLogin, async function (req, res, next) {
   let role = String(req.user.role || '').toLowerCase();
-  let query = orderModel.find({ isDeleted: false });
   if (['admin', 'staff'].includes(role)) {
-    query = query.populate('user');
-  } else {
-    query = query.find({ user: req.user._id });
+    let orders = await orderModel.find({ isDeleted: false })
+      .populate('user')
+      .populate('paymentMethodId')
+      .populate('items.product')
+      .sort({ createdAt: -1 });
+    res.send(orders);
+    return;
   }
-  let orders = await query
+
+  let orders = await orderModel.find({
+    isDeleted: false,
+    user: req.user._id
+  })
     .populate('paymentMethodId')
     .populate('items.product')
     .sort({ createdAt: -1 });

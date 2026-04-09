@@ -81,7 +81,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { reportApi, productApi, orderApi, adminApi, userApi, promotionApi } from '../../services/api.js'
+import { reportApi, productApi, orderApi, adminApi, userApi } from '../../services/api.js'
 
 const loading = ref(false)
 const stats = ref({
@@ -92,8 +92,7 @@ const stats = ref({
   todayOrders: 0, 
   todayRevenue: 0,
   customers: 0, 
-  adminCount: 0, 
-  activePromotions: 0
+  adminCount: 0
 })
 const lowStockProducts = ref([])
 
@@ -103,7 +102,6 @@ const menuItems = [
   { title: 'Báo cáo',       desc: 'Thống kê doanh thu & sản phẩm', path: '/admin/dashboard',  icon: '📊', color: '#fbbc05' },
   { title: 'Khách hàng',    desc: 'Quản lý tài khoản người dùng',  path: '/admin/users',      icon: '👥', color: '#ea4335' },
   { title: 'Quản trị viên', desc: 'Quản lý tài khoản Admin',       path: '/admin/admins',     icon: '🛡️', color: '#8b5cf6' },
-  { title: 'Khuyến mãi',    desc: 'Mã giảm giá & chương trình',   path: '/admin/promotions', icon: '🎟️', color: '#ec4899' },
   { title: 'Thanh toán',    desc: 'Phương thức thanh toán',       path: '/admin/payment-methods', icon: '💳', color: '#14b8a6' },
   { title: 'Thương hiệu',   desc: 'Danh mục brand sản phẩm',      path: '/admin/brands',     icon: '🏷️', color: '#f97316' }
 ]
@@ -116,8 +114,7 @@ const statCards = computed(() => [
   { label: 'Đơn hôm nay',       value: stats.value.todayOrders.toLocaleString('vi-VN'),      icon: '📅', color: '#4285f4' },
   { label: 'Doanh thu hôm nay', value: formatCurrency(stats.value.todayRevenue),             icon: '📈', color: '#34a853' },
   { label: 'Tổng khách hàng',   value: stats.value.customers.toLocaleString('vi-VN'),        icon: '👥', color: '#9c27b0' },
-  { label: 'Tài khoản Admin',   value: stats.value.adminCount.toLocaleString('vi-VN'),       icon: '🛡️', color: '#8b5cf6' },
-  { label: 'Khuyến mãi',        value: stats.value.activePromotions.toLocaleString('vi-VN'), icon: '🎟️', color: '#ec4899' }
+  { label: 'Tài khoản Admin',   value: stats.value.adminCount.toLocaleString('vi-VN'),       icon: '🛡️', color: '#8b5cf6' }
 ])
 
 function formatCurrency(value) {
@@ -134,15 +131,14 @@ async function loadDashboard() {
   stats.value = {
     products: 0, orders: 0, pending: 0,
     revenue: 0, todayOrders: 0, todayRevenue: 0,
-    customers: 0, adminCount: 0, activePromotions: 0
+    customers: 0, adminCount: 0
   }
 
   try {
-    const [productsRes, ordersRes, revenueRes, promotionsRes] = await Promise.all([
+    const [productsRes, ordersRes, revenueRes] = await Promise.all([
       productApi.getAll(),
       orderApi.getAll(),
-      reportApi.getRevenue(),
-      promotionApi.getAll()
+      reportApi.getRevenue()
     ])
 
     // Sản phẩm
@@ -183,15 +179,6 @@ async function loadDashboard() {
     } catch (e) { 
       console.warn('Không tải được Admin:', e) 
     }
-
-    const promotions = Array.isArray(promotionsRes.data) ? promotionsRes.data : []
-    const now = Date.now()
-    stats.value.activePromotions = promotions.filter(p => {
-      const expireTime = p.expireDate ? new Date(p.expireDate).getTime() : null
-      const maxUsage = Number(p.maxUsage || 0)
-      const usageCount = Number(p.usageCount || 0)
-      return p.isActive !== false && (!expireTime || expireTime >= now) && (maxUsage <= 0 || usageCount < maxUsage)
-    }).length
 
   } catch (e) {
     console.error('Lỗi load dashboard:', e)

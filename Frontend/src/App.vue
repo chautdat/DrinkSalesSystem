@@ -18,9 +18,6 @@
         <router-link to="/admin/brands" class="nav-link"
           >Thương hiệu</router-link
         >
-        <router-link to="/admin/promotions" class="nav-link"
-          >Khuyến mãi</router-link
-        >
       </div>
       <div class="nav-right">
         <span class="user-email">{{ user?.email }}</span>
