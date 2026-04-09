@@ -5,7 +5,6 @@
 Hệ thống được thiết kế để:
 - Quản lý thông tin người dùng
 - Quản lý sản phẩm, danh mục, thương hiệu và phương thức thanh toán
-- Quản lý khuyến mãi / mã giảm giá
 - Quản lý giỏ hàng, đơn hàng và upload hình ảnh
 - Hỗ trợ nhắn tin realtime giữa người dùng
 
@@ -152,6 +151,31 @@ Mặc định:
 - Backend chạy tại `http://localhost:3000`
 - Frontend chạy tại `http://localhost:5173`
 - Frontend gọi API qua `/api/v1`
+
+### Docker
+```bash
+docker compose up --build
+```
+
+Sau khi chạy:
+- Frontend: `http://localhost:8080`
+- Backend: `http://localhost:3000`
+- MongoDB: `mongodb://127.0.0.1:27018`
+
+Mặc định Docker Compose sẽ:
+- khởi động MongoDB
+- chạy backend Node.js
+- tự seed dữ liệu mẫu
+- build frontend Vue.js và serve bằng Nginx
+
+Thông tin đăng nhập demo trong Docker:
+- Email: `admin@gmail.com`
+- Mật khẩu: `Admin@123`
+
+Nếu muốn xóa toàn bộ dữ liệu Docker và chạy lại từ đầu:
+```bash
+docker compose down -v
+```
 
 ---
 ## API routes
