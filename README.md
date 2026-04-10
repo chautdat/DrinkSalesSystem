@@ -6,7 +6,6 @@ Hệ thống được thiết kế để:
 - Quản lý thông tin người dùng
 - Quản lý sản phẩm, danh mục, thương hiệu và phương thức thanh toán
 - Quản lý giỏ hàng, đơn hàng và upload hình ảnh
-- Hỗ trợ nhắn tin realtime giữa người dùng
 
 ---
 ## Mục đích dự án
@@ -95,7 +94,7 @@ DrinkSalesSystem được xây dựng nhằm:
 - Authorization theo role `admin`, `staff`, `customer`
 - Upload ảnh/file
 - Transaction khi tạo đơn hàng
-- Socket realtime cho chat và thông báo
+- Socket realtime cho các sự kiện đơn hàng
 - Quản lý brand, payment method, product image
 - Báo cáo doanh thu và sản phẩm bán chạy
 
@@ -190,7 +189,6 @@ docker compose down -v
 - `/api/v1/payment-methods`
 - `/api/v1/reports`
 - `/api/v1/carts`
-- `/api/v1/messages`
 - `/api/v1/upload`
 - `/api/v1/orders`
 
@@ -199,19 +197,8 @@ docker compose down -v
 
 ### Server emit
 - `socket:connected`
-- `message:new`
 - `order:created`
 - `order:updated`
-
-### Client join room
-- `join`
-- `user:join`
-- `conversation:join`
-- `room:join`
-
-### Typing events
-- `chat:typing`
-- `message:typing`
 
 ---
 ## Ghi chú

@@ -20,7 +20,6 @@ var paymentMethodsRouter = require('./routes/paymentMethods');
 var reportsRouter = require('./routes/reports');
 var productImagesRouter = require('./routes/productImages');
 var uploadRouter = require('./routes/upload');
-var messagesRouter = require('./routes/messages');
 var ordersRouter = require('./routes/orders');
 
 var app = express();
@@ -41,7 +40,6 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/', indexRouter);
 app.use('/api/v1/users', usersRouter);
-app.use('/api/v1/messages', messagesRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/carts', cartsRouter);
 app.use('/api/v1/cart', cartsRouter);
